@@ -18,9 +18,8 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
 
 <figure>
   <img
-  src="./figureBOS.png"
-  alt="High-level view of the deadline-aware and time-critical BeBiDa mechanisms.">
-  <figcaption>MDN Logo</figcaption>
+  src="./figureBOS.png">
+  <figcaption>High-level view of the deadline-aware and time-critical BeBiDa mechanisms.</figcaption>
 </figure>
 
  
