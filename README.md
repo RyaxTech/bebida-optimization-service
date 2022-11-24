@@ -12,6 +12,6 @@ In this technique we will use a dynamic set of resources to serve applications i
 
 The following figure sketches the design of executing jobs using the new BeBiDa deadline-aware and time-critical techniques through the usage of RYAX workflow engine.
 
-![BeBiDa optimizations](/bebida-optimization-service/figureBOS.png?raw=true "High-level view of the deadline-aware and time-critical BeBiDa mechanisms")
+![BeBiDa optimizations](./figureBOS.png?raw=true "High-level view of the deadline-aware and time-critical BeBiDa mechanisms")
 
  
