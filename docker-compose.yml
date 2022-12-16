@@ -4,6 +4,7 @@ services:
   k3s-server:
     image: "rancher/k3s:v1.25.4-k3s1"
     command: server
+    container_name: k3s-server
     tmpfs:
       - /run
       - /var/run
@@ -88,6 +89,8 @@ services:
       - "127.0.0.1:2222:22"
     depends_on:
       - "slurmdbd"
+      # Wee need the kubeconfig file to be created at startup
+      - "k3s-server"
 
   c1:
     image: registry.ryax.org/utils/slurm-bebida:22.12.0
