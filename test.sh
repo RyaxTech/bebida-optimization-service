@@ -24,4 +24,6 @@ export BEBIDA_SSH_USER="root"
 export BEBIDA_SSH_HOSTNAME="127.0.0.1"
 export BEBIDA_SSH_PORT="2222"
 
+printenv
+
 go test .
