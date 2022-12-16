@@ -29,10 +29,10 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
     HPC jobs that will stay in the BDA resource pool.
 - [X] support for K8s (BDA)
 - [X] support Slurm over SSH (HPC)
-- [ ] Full testing environment
-- [ ] Support for OAR (HPC)
+- [X] Full testing environment
 - [ ] Handle BDA app early termination (cancel HPC job if not used anymore)
 - [ ] Handle HPC job termination
+- [ ] Support for OAR (HPC)
 - [ ] Improve heuristic using BDA app time and resource requirements
 
 # Usage
