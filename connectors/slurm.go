@@ -26,3 +26,15 @@ func Punch() error {
 	log.Infof("Punch command output: %s", string(out))
 	return nil
 }
+
+func QuitPunch() error {
+	cmd := string("scancel --name BEBIDA_NOOP")
+	out, err := ExecuteCommand(cmd)
+	if err != nil {
+		log.Errorf("Unable to submit job: %s", err)
+		return err
+	}
+
+	log.Infof("Quit Punch command output: %s", string(out))
+	return nil
+}

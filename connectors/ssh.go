@@ -62,7 +62,8 @@ func ExecuteCommand(cmd string) (string, error){
 	session.Stdout = &b
 	log.Infof("Running SSH on host %s with command: %s", hostname, cmd)
 	if err := session.Run(cmd); err != nil {
-		log.Fatal("Failed to run: " + err.Error())
+		log.Error("Failed to run: " + err.Error())
+		return "", err
 	}
 	log.Infof("Completed SSH on host %s with command: %s\nOUTPUTS: %s", hostname, cmd, b.String())
 	return b.String(), nil

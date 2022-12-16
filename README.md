@@ -30,7 +30,7 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
 - [X] support for K8s (BDA)
 - [X] support Slurm over SSH (HPC)
 - [X] Full testing environment
-- [ ] Handle BDA app early termination (cancel HPC job if not used anymore)
+- [X] Handle BDA app early termination (cancel HPC job if not used anymore)
 - [ ] Handle HPC job termination
 - [ ] Support for OAR (HPC)
 - [ ] Improve heuristic using BDA app time and resource requirements
@@ -50,8 +50,7 @@ secrets are hard-coded to simplify development.
 
 You can spawn a test cluster for Bebida using:
 ```sh
-K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM}
-docker-compose up
+docker-compose up -d
 ```
 It contains a Slurm master and a K3s master with 1 Kubernetes only worker node and 2 nodes Slurm+K3s nodes with Bebida enabeled.
 
@@ -82,7 +81,7 @@ and then come back to a Ready state.
 Before running the optimizer you'll need SSH access to the Slurm frontend. In
 the project root directory run:
 ```sh
-export BEBIDA_SSH_PKEY=$(docker-compose exec slurmctld cat /root/.ssh/id_rsa | base64)
+export BEBIDA_SSH_PKEY=$(docker-compose exec -ti slurmctld cat /root/.ssh/id_rsa | base64)
 export BEBIDA_SSH_USER="root"
 export BEBIDA_SSH_HOSTNAME="127.0.0.1"
 export BEBIDA_SSH_PORT="2222"
@@ -100,7 +99,7 @@ go run .
 
 Put a job in the queue with:
 ```sh
- cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
 metadata:

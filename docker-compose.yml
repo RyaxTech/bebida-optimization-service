@@ -16,7 +16,7 @@ services:
     privileged: true
     restart: always
     environment:
-      - K3S_TOKEN=${K3S_TOKEN:?err}
+      - K3S_TOKEN=${K3S_TOKEN:-unsecureToken1234}
       - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
       - K3S_KUBECONFIG_MODE=666
     volumes:
@@ -42,7 +42,7 @@ services:
     restart: always
     environment:
       - K3S_URL=https://k3s-server:6443
-      - K3S_TOKEN=${K3S_TOKEN:?err}
+      - K3S_TOKEN=${K3S_TOKEN:-unsecureToken1234}
 
   mysql:
     image: mysql:5.7
@@ -110,7 +110,7 @@ services:
     restart: always
     environment:
       - K3S_URL=https://k3s-server:6443
-      - K3S_TOKEN=${K3S_TOKEN:?err}
+      - K3S_TOKEN=${K3S_TOKEN:-unsecureToken1234}
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
@@ -141,7 +141,7 @@ services:
     restart: always
     environment:
       - K3S_URL=https://k3s-server:6443
-      - K3S_TOKEN=${K3S_TOKEN:?err}
+      - K3S_TOKEN=${K3S_TOKEN:-unsecureToken1234}
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm

@@ -19,12 +19,16 @@ var params Parameters
 func run() {
 	log.Info("Check for the Queue state")
 	queueSize, err := connectors.GetQueueSize()
-
 	if err != nil {
 		log.Errorf("Unable to get size the queue %s", err)
 	}
+	nbRunningApp, err := connectors.GetNbRunningApp()
+	if err != nil {
+		log.Errorf("Unable to get number of running app %s", err)
+	}
 
 	log.Infof("Queue size found: %d", queueSize)
+	log.Infof("Nb running app found: %d", nbRunningApp)
 	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
 		log.Info("Hummmm... a Ti'Punch ^^")
 		params.pendingJobs += 1
@@ -33,6 +37,8 @@ func run() {
 			log.Errorf("Unable to allocate resources %s", err)
 		}
 		params.pendingJobs -= 1
+	} else if queueSize == 0 && nbRunningApp == 0 {
+		connectors.QuitPunch()
 	}
 }
 
