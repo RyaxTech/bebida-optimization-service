@@ -2,7 +2,7 @@ version: '3'
 
 services:
   k3s-server:
-    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    image: "rancher/k3s:v1.25.4-k3s1"
     command: server
     tmpfs:
       - /run
@@ -28,7 +28,7 @@ services:
       - 443:443    # Ingress controller port 443
 
   k3s-agent:
-    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    image: "rancher/k3s:v1.25.4-k3s1"
     tmpfs:
       - /run
       - /var/run
@@ -40,7 +40,7 @@ services:
     privileged: true
     restart: always
     environment:
-      - K3S_URL=https://server:6443
+      - K3S_URL=https://k3s-server:6443
       - K3S_TOKEN=${K3S_TOKEN:?err}
 
   mysql:
@@ -56,7 +56,7 @@ services:
       - var_lib_mysql:/var/lib/mysql
 
   slurmdbd:
-    image: registry.ryax.org/utils/slurm-docker-cluster:21.08.5
+    image: registry.ryax.org/utils/slurm-bebida:22.12.0
     command: ["slurmdbd"]
     container_name: slurmdbd
     hostname: slurmdbd
@@ -70,7 +70,7 @@ services:
       - "mysql"
 
   slurmctld:
-    image: registry.ryax.org/utils/slurm-docker-cluster:21.08.5
+    image: registry.ryax.org/utils/slurm-bebida:22.12.0
     privileged: True
     command: ["slurmctld"]
     container_name: slurmctld
@@ -80,6 +80,8 @@ services:
       - etc_slurm:/etc/slurm
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
+      # Give access to the k3s kubeconfig file
+      - .:/usr/local/etc/bebida
     expose:
       - 6817
     ports:
@@ -88,39 +90,69 @@ services:
       - "slurmdbd"
 
   c1:
-    image: registry.ryax.org/utils/slurm-docker-cluster:21.08.5
+    image: registry.ryax.org/utils/slurm-bebida:22.12.0
     privileged: True
     command: ["slurmd"]
     hostname: c1
     container_name: c1
+    tmpfs:
+      - /run
+      - /var/run
+      - /var/run/munge
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    restart: always
+    environment:
+      - K3S_URL=https://k3s-server:6443
+      - K3S_TOKEN=${K3S_TOKEN:?err}
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
+      - k3s-c1-vol:/var/lib/rancher/k3s
     expose:
       - "6818"
     depends_on:
       - "slurmctld"
 
   c2:
-    image: registry.ryax.org/utils/slurm-docker-cluster:21.08.5
+    image: registry.ryax.org/utils/slurm-bebida:22.12.0
     privileged: True
     command: ["slurmd"]
     hostname: c2
     container_name: c2
+    tmpfs:
+      - /run
+      - /var/run
+      - /var/run/munge
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    restart: always
+    environment:
+      - K3S_URL=https://k3s-server:6443
+      - K3S_TOKEN=${K3S_TOKEN:?err}
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
+      - k3s-c2-vol:/var/lib/rancher/k3s
     expose:
       - "6818"
     depends_on:
       - "slurmctld"
 
 volumes:
-  k3s-server-vol: { }
+  k3s-server-vol: {}
+  k3s-c1-vol: {}
+  k3s-c2-vol: {}
   etc_munge: {}
   etc_slurm: {}
   slurm_jobdir: {}
