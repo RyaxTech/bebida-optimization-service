@@ -117,6 +117,7 @@ services:
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
       - k3s-c1-vol:/var/lib/rancher/k3s
+      - k3s-c1-conf:/etc/rancher
     expose:
       - "6818"
     depends_on:
@@ -147,6 +148,7 @@ services:
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
       - k3s-c2-vol:/var/lib/rancher/k3s
+      - k3s-c2-conf:/etc/rancher
     expose:
       - "6818"
     depends_on:
@@ -156,6 +158,8 @@ volumes:
   k3s-server-vol: {}
   k3s-c1-vol: {}
   k3s-c2-vol: {}
+  k3s-c1-conf: {}
+  k3s-c2-conf: {}
   etc_munge: {}
   etc_slurm: {}
   slurm_jobdir: {}
