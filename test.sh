@@ -19,7 +19,7 @@ until [[ $(kubectl get endpoints/kubernetes -o=jsonpath='{.subsets[*].addresses[
 echo Kubernetes Connection is UP!
 
 # Export variables for ssh access
-export BEBIDA_SSH_PKEY=$(docker-compose exec slurmctld cat /root/.ssh/id_rsa | base64)
+export BEBIDA_SSH_PKEY=$(docker-compose exec -ti slurmctld cat /root/.ssh/id_rsa | base64)
 export BEBIDA_SSH_USER="root"
 export BEBIDA_SSH_HOSTNAME="127.0.0.1"
 export BEBIDA_SSH_PORT="2222"
