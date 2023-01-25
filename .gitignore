@@ -4,3 +4,5 @@ pkey.tmp
 kubeconfig.yaml
 bebida-optimization-service
 /workflow-manager-1-kubeconfig.yaml
+/vendor
+app
