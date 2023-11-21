@@ -18,14 +18,14 @@
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
 
     in
-    {
+    rec {
 
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
         in
-        {
+        rec {
           bebida-shaker = pkgs.buildGoModule {
             pname = "bebida-optimization-service";
             inherit version;
@@ -47,11 +47,56 @@
 
             vendorSha256 = "sha256-F9843vH95xAsvtEsnO6LiSu6MjAg0Ax55l02U/zoFCA=";
           };
+          default = bebida-shaker;
         });
+        nixosModules = forAllSystems (system:
+          rec {
+            bebida-shaker = ({config, lib, pkgs, ...}: let
+              cfg = config.services.bebida-shaker;
+            in
+            with lib; {
+              # interface
+              options.services.bebida-shaker = {
+                enable = mkEnableOption (lib.mdDoc "bebida-shaker");
 
-      # The default package for 'nix build'. This makes sense if the
-      # flake provides only one package or there is a clear "main"
-      # package.
-      defaultPackage = forAllSystems (system: self.packages.${system}.bebida-shaker);
+                package = mkOption {
+                  type = types.package;
+                  default = pkgs.bebida-shaker;
+                  defaultText = literalExpression "pkgs.bebida-shaker";
+                  description = lib.mdDoc "Package that should be used for Bebida Shaker";
+                };
+                environmentFile = mkOption {
+                  type = types.nullOr types.path;
+                  description = lib.mdDoc ''
+                    File path containing environment variables for configuring the Bebida Shaker service in the format of an EnvironmentFile. See systemd.exec(5).
+                  '';
+                  default = null;
+                };
+              };
+
+              # Implementation
+              config = mkIf cfg.enable {
+
+                environment.systemPackages = [ config.services.bebida-shaker.package ];
+
+                systemd.services.bebida-shaker = {
+                  description = "BeBiDa Shaker service";
+                  after = [ "firewall.service" "network-online.target" ];
+                  wants = [ "firewall.service" "network-online.target" ];
+                  wantedBy = [ "multi-user.target" ];
+                  serviceConfig = {
+                    Type = "exec";
+                    KillMode = "process";
+                    Delegate = "yes";
+                    Restart = "always";
+                    RestartSec = "5s";
+                    EnvironmentFile = cfg.environmentFile;
+                    ExecStart = "${cfg.package}/bin/bebida-shaker";
+                  };
+                };
+              };
+            });
+            default = bebida-shaker;
+          });
     };
 }
