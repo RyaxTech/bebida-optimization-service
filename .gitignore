@@ -6,3 +6,10 @@ bebida-optimization-service
 /workflow-manager-1-kubeconfig.yaml
 /vendor
 app
+docs/slides.aux
+docs/slides.log
+docs/slides.nav
+docs/slides.out
+docs/slides.out
+docs/slides.snm
+docs/slides.toc
