@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	connectors "github.com/RyaxTech/bebida-optimization-service/connectors"
+	connectors "github.com/RyaxTech/bebida-shaker/connectors"
 	"github.com/apex/log"
 )
 

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/RyaxTech/bebida-optimization-service/connectors"
+	"github.com/RyaxTech/bebida-shaker/connectors"
 )
 
 func TestSSH(t *testing.T) {

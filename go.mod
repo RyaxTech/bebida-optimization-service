@@ -1,4 +1,4 @@
-module github.com/RyaxTech/bebida-optimization-service
+module github.com/RyaxTech/bebida-shaker
 
 go 1.19
 
