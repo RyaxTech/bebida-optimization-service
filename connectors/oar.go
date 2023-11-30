@@ -60,25 +60,30 @@ func (oar OAR) QuitAllPunch() error {
 }
 
 func (OAR) Refill(nbResources int) error {
-	// Apply quota on the server by changing the file content. It's reloaded for every scheduling round.
-	cmd := string("oarstat --json | jq '. | length'")
-	out, err := exec.ExecuteCommand(cmd)
-	if err != nil {
-		log.Errorf("Unable to list bebida jobs: %s", err)
-		return err
-	}
-	totalResourceStr := strings.TrimSuffix(out, "\n")
-	totalResources, err := strconv.Atoi(totalResourceStr)
-	if err != nil {
-		log.Errorf("Unable to parse number of resources: %s", err)
-		return err
+	var quotaResource int
+	if nbResources != -1 {
+		// Apply quota on the server by changing the file content. It's reloaded for every scheduling round.
+		cmd := string("oarstat --json | jq '. | length'")
+		out, err := exec.ExecuteCommand(cmd)
+		if err != nil {
+			log.Errorf("Unable to list bebida jobs: %s", err)
+			return err
+		}
+		totalResourceStr := strings.TrimSuffix(out, "\n")
+		totalResources, err := strconv.Atoi(totalResourceStr)
+		if err != nil {
+			log.Errorf("Unable to parse number of resources: %s", err)
+			return err
+		}
+		quotaResource = totalResources - nbResources
+	} else {
+		quotaResource = -1
 	}
 	// quotas format. Use * for all in, Use -1 in values for "no limit":
 	// "<Queue>, <project>, <job_type>, <user>": [<Maximum used resources>, <Max running job>, <Max resource per hours>]
-
-	quota := fmt.Sprintf("{\"quotas\": \"*,*,*,*\": [-1, %d, -1]}", totalResources-nbResources)
-	cmd = fmt.Sprintf("echo '%s' > /etc/oar/quotas.json", quota)
-	_, err = exec.ExecuteCommand(cmd)
+	quota := fmt.Sprintf("{\"quotas\": \"*,*,*,*\": [-1, %d, -1]}", quotaResource)
+	cmd := fmt.Sprintf("echo '%s' > /etc/oar/quotas.json", quota)
+	_, err := exec.ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to list bebida jobs: %s", err)
 		return err

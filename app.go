@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"time"
 
 	connectors "github.com/RyaxTech/bebida-shaker/connectors"
@@ -11,10 +12,11 @@ import (
 type HPCSchedulerType string
 
 type Parameters struct {
-	threshold        int
-	pendingJobs      int
-	maxPendingJob    int
-	HPCSchedulerType string
+	threshold         int
+	pendingJobs       int
+	maxPendingJob     int
+	stepTimeInSeconds int
+	HPCSchedulerType  string
 }
 
 var params Parameters
@@ -44,7 +46,7 @@ func run() string {
 	} else {
 		HPCScheduler.Refill(-1)
 	}
-	
+
 	log.Infof("Queue size found: %d", queueSize)
 	log.Infof("Nb running app found: %d", nbRunningApp)
 	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
@@ -62,16 +64,45 @@ func run() string {
 	return ""
 }
 
-func RunForever() {
+func RunForever(step time.Duration) {
 	for {
 		go run()
-		time.Sleep(1 * time.Second)
+		time.Sleep(step * time.Second)
+	}
+}
+
+func getIntEnv(envName string, defaultValue int) int {
+	val, ok := os.LookupEnv(envName)
+	if !ok {
+		return defaultValue
+	} else {
+		intVal, err := strconv.Atoi(val)
+		if err != nil {
+			log.Warnf("Unable to parse '%s' environment variable with value '%s': %s", envName, val, err)
+			return defaultValue
+		}
+		return intVal
+	}
+}
+
+func getStrEnv(envName string, defaultValue string) string {
+	val, ok := os.LookupEnv(envName)
+	if !ok {
+		return defaultValue
+	} else {
+		return val
 	}
 }
 
 func main() {
 	log.Info("Starting Bebida Shacker")
-	params = Parameters{threshold: 1, pendingJobs: 0, maxPendingJob: 1, HPCSchedulerType: os.Getenv("BEBIDA_HPC_SCHEDULER_TYPE")}
+	params = Parameters{
+		threshold:         getIntEnv("BEBIDA_NB_PENDING_JOB_THRESHOLD", 1),
+		pendingJobs:       0,
+		maxPendingJob:     getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 1),
+		HPCSchedulerType:  getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
+		stepTimeInSeconds: getIntEnv("BEBIDA_STEP_IN_SECONDS", 3),
+	}
 	log.Infof("Parameters: %+v\n", params)
-	RunForever()
+	RunForever(time.Duration(params.stepTimeInSeconds))
 }
