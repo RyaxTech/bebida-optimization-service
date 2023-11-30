@@ -38,6 +38,11 @@ func (SLURM) QuitPunch(jobID string) error {
 	return nil
 }
 
+func (SLURM) QuitAllPunch() error {
+	log.Error("Not implemented!")
+	return nil
+}
+
 func (SLURM) Refill(nbNodes int) error {
 	log.Error("Not implemented!")
 	return nil

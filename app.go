@@ -22,7 +22,7 @@ var params Parameters
 // Simulate a function that takes 1s to complete.
 func run() string {
 	log.Info("Check for the Queue state")
-	queueSize, err := connectors.GetQueueSize()
+	queueSize, timeCriticalQueueSize, err := connectors.GetQueueSize()
 	if err != nil {
 		log.Errorf("Unable to get size the queue %s", err)
 	}
@@ -31,7 +31,7 @@ func run() string {
 		log.Errorf("Unable to get number of running app %s", err)
 	}
 
-	var HPCScheduler connectors.HPConnector
+	var HPCScheduler connectors.HPCConnector
 	switch params.HPCSchedulerType {
 	case "OAR":
 		HPCScheduler = connectors.OAR{}
@@ -39,8 +39,12 @@ func run() string {
 		HPCScheduler = connectors.SLURM{}
 	}
 
-	var jobID string
-
+	if timeCriticalQueueSize > 0 {
+		HPCScheduler.Refill(timeCriticalQueueSize)
+	} else {
+		HPCScheduler.Refill(-1)
+	}
+	
 	log.Infof("Queue size found: %d", queueSize)
 	log.Infof("Nb running app found: %d", nbRunningApp)
 	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
@@ -53,7 +57,7 @@ func run() string {
 		params.pendingJobs -= 1
 		return jobID
 	} else if queueSize == 0 && nbRunningApp == 0 {
-		HPCScheduler.QuitPunch(jobID)
+		HPCScheduler.QuitAllPunch()
 	}
 	return ""
 }

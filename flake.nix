@@ -20,13 +20,13 @@
           inherit version;
           # In 'nix develop', we don't need a copy of the source tree
           # in the Nix store.
-          # src = ./.;
-          src = fetchFromGitHub {
-            owner = "RyaxTech";
-            repo = "bebida-shaker";
-            rev = "main";
-            sha256 = pkgs.lib.fakeSha256;
-          }
+          src = ./.;
+          #src = fetchFromGitHub {
+          #  owner = "RyaxTech";
+          #  repo = "bebida-shaker";
+          #  rev = "main";
+          #  sha256 = pkgs.lib.fakeSha256;
+          #}
 
           checkPhase = "";
 
@@ -38,9 +38,9 @@
           # it should be "out-of-band" with other tooling (eg. gomod2nix).
           # To begin with it is recommended to set this, but one must
           # remeber to bump this hash when your dependencies change.
-          vendorSha256 = pkgs.lib.fakeSha256;
+          # vendorSha256 = pkgs.lib.fakeSha256;
 
-          #vendorSha256 = "sha256-F9843vH95xAsvtEsnO6LiSu6MjAg0Ax55l02U/zoFCA=";
+          vendorSha256 = "sha256-F9843vH95xAsvtEsnO6LiSu6MjAg0Ax55l02U/zoFCA=";
         };
       bebidaShakerModule = { config, lib, pkgs, ... }:
         let

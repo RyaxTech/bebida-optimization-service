@@ -2,9 +2,11 @@ package connectors
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/RyaxTech/bebida-shaker/connectors/exec"
+	"github.com/RyaxTech/bebida-shaker/connectors/utils"
 	"github.com/apex/log"
 )
 
@@ -12,7 +14,8 @@ type OAR struct{}
 
 func (OAR) Punch(nbCpuPerJob int, jobDurationInSeconds int) (string, error) {
 	// TODO put this in a config file (or env var)
-	cmd := fmt.Sprintf("oarsub --name BEBIDA_NOOP -l cores=%d sleep %d | grep OAR_JOB_ID | cut -d'=' -f2", nbCpuPerJob, jobDurationInSeconds)
+	randomSuffix := utils.RandomString(8)
+	cmd := fmt.Sprintf("oarsub --name BEBIDA_NOOP_%s -l cores=%d sleep %d | grep OAR_JOB_ID | cut -d'=' -f2", randomSuffix, nbCpuPerJob, jobDurationInSeconds)
 	out, err := exec.ExecuteCommand(cmd)
 
 	if err != nil {
@@ -36,7 +39,7 @@ func (OAR) QuitPunch(jobID string) error {
 	return nil
 }
 
-func (oar OAR) QuitAllPunch(oarJobId string) error {
+func (oar OAR) QuitAllPunch() error {
 	// get OAR job ID from the name
 	cmd := string("oarstat --json | jq '.[] | select(.name | match(\"BEBIDA_NOOP\")) | .id' -r)")
 	out, err := exec.ExecuteCommand(cmd)
@@ -56,7 +59,29 @@ func (oar OAR) QuitAllPunch(oarJobId string) error {
 	return nil
 }
 
-func (OAR) Refill(nbNodes int) error {
-	log.Error("Not implemented!")
+func (OAR) Refill(nbResources int) error {
+	// Apply quota on the server by changing the file content. It's reloaded for every scheduling round.
+	cmd := string("oarstat --json | jq '. | length'")
+	out, err := exec.ExecuteCommand(cmd)
+	if err != nil {
+		log.Errorf("Unable to list bebida jobs: %s", err)
+		return err
+	}
+	totalResourceStr := strings.TrimSuffix(out, "\n")
+	totalResources, err := strconv.Atoi(totalResourceStr)
+	if err != nil {
+		log.Errorf("Unable to parse number of resources: %s", err)
+		return err
+	}
+	// quotas format. Use * for all in, Use -1 in values for "no limit":
+	// "<Queue>, <project>, <job_type>, <user>": [<Maximum used resources>, <Max running job>, <Max resource per hours>]
+
+	quota := fmt.Sprintf("{\"quotas\": \"*,*,*,*\": [-1, %d, -1]}", totalResources-nbResources)
+	cmd = fmt.Sprintf("echo '%s' > /etc/oar/quotas.json", quota)
+	_, err = exec.ExecuteCommand(cmd)
+	if err != nil {
+		log.Errorf("Unable to list bebida jobs: %s", err)
+		return err
+	}
 	return nil
 }

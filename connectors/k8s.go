@@ -17,7 +17,7 @@ type K8sConfig struct {
 	kubeconfigPath string
 }
 
-func GetQueueSize() (int, error) {
+func GetQueueSize() (int, int, error) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 	namespace := k8sConfig.namespace
 	selector := k8sConfig.labelSelector
@@ -26,21 +26,30 @@ func GetQueueSize() (int, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
 	if err != nil {
 		log.Errorf("Error while getting Kubernetes configuration %s", err)
-		return -1, err
+		return -1,-1,err
 	}
 
 	clientSet := kubernetes.NewForConfigOrDie(config)
 
-	items, err := GetPendingPods(clientSet, ctx, namespace, selector)
+	normalPods, err := GetPendingPods(clientSet, ctx, namespace, selector)
 	if err != nil {
 		log.Errorf("Error while getting pod state %s", err)
-		return -1, err
+		return -1,-1,err
 	} else {
-		for _, item := range items {
-			log.Debugf("%+v\n", item)
+		for _, item := range normalPods {
+			log.Debugf("Normal pods: %+v\n", item)
 		}
 	}
-	return len(items), nil
+	timeCriticalPods, err := GetPendingPods(clientSet, ctx, namespace, "timeCritical=1")
+	if err != nil {
+		log.Errorf("Error while getting pod state %s", err)
+		return -1,-1,err
+	} else {
+		for _, item := range timeCriticalPods {
+			log.Debugf("Time critical pods: %+v\n", item)
+		}
+	}
+	return len(normalPods), len(timeCriticalPods), nil
 }
 
 func GetPendingPods(clientSet *kubernetes.Clientset, ctx context.Context, namespace string, selector string) ([]v1.Pod, error) {
