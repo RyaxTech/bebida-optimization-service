@@ -1,4 +1,4 @@
-package connectors
+package exec
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func ExecuteCommand(cmd string) (string, error){
-	
+func ExecuteCommand(cmd string) (string, error) {
+
 	// From file
 	//key, err := os.ReadFile("pkey.tmp")
 	//if err != nil {

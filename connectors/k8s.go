@@ -12,8 +12,8 @@ import (
 )
 
 type K8sConfig struct {
-	namespace string
-	labelSelector string
+	namespace      string
+	labelSelector  string
 	kubeconfigPath string
 }
 
@@ -21,7 +21,7 @@ func GetQueueSize() (int, error) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 	namespace := k8sConfig.namespace
 	selector := k8sConfig.labelSelector
-	
+
 	ctx := context.Background()
 	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
 	if err != nil {
@@ -67,7 +67,7 @@ func GetNbRunningApp() (int, error) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 	namespace := k8sConfig.namespace
 	selector := k8sConfig.labelSelector
-	
+
 	ctx := context.Background()
 	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
 	if err != nil {

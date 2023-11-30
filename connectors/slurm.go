@@ -2,39 +2,43 @@ package connectors
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/RyaxTech/bebida-shaker/connectors/exec"
+	"github.com/RyaxTech/bebida-shaker/connectors/utils"
 	"github.com/apex/log"
 )
 
-type SlurmConfig struct {
-	nbCpuPerJob          int
-	jobDurationInSeconds int
-}
+type SLURM struct{}
 
-func Punch() error {
-	// TODO put this in a config file (or env var)
-	config := SlurmConfig{nbCpuPerJob: 1, jobDurationInSeconds: 900}
-
-	cmd := fmt.Sprintf("srun --job-name BEBIDA_NOOP -n %d sleep %d", config.nbCpuPerJob, config.jobDurationInSeconds)
-	out, err := ExecuteCommand(cmd)
-
+func (SLURM) Punch(nbCpuPerJob int, jobDurationInSeconds int) (string, error) {
+	randomSuffix := utils.RandomString(8)
+	cmd := fmt.Sprintf("sbatch --parsable --job-name BEBIDA_NOOP_%s -n %d sleep %d", randomSuffix, nbCpuPerJob, jobDurationInSeconds)
+	out, err := exec.ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to submit job: %s", err)
-		return err
+		return "", err
 	}
+	// Get job id
+	jobID := strings.Split(out, ";")[0]
 
 	log.Infof("Punch command output: %s", string(out))
-	return nil
+	return jobID, nil
 }
 
-func QuitPunch() error {
-	cmd := string("scancel --name BEBIDA_NOOP")
-	out, err := ExecuteCommand(cmd)
+func (SLURM) QuitPunch(jobID string) error {
+	cmd := fmt.Sprintf("scancel %s", jobID)
+	out, err := exec.ExecuteCommand(cmd)
 	if err != nil {
-		log.Errorf("Unable to submit job: %s", err)
+		log.Errorf("Unable to cancel job: %s", err)
 		return err
 	}
 
 	log.Infof("Quit Punch command output: %s", string(out))
+	return nil
+}
+
+func (SLURM) Refill(nbNodes int) error {
+	log.Error("Not implemented!")
 	return nil
 }
