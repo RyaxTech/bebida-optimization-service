@@ -24,7 +24,7 @@ var params Parameters
 // Simulate a function that takes 1s to complete.
 func run() string {
 	log.Info("Check for the Queue state")
-	queueSize, timeCriticalQueueSize, err := connectors.GetQueueSize()
+	queueSize, timeCriticalQueueSize, deadlineAwareQueue, err := connectors.GetQueueSize()
 	if err != nil {
 		log.Errorf("Unable to get size the queue %s", err)
 	}
@@ -47,6 +47,16 @@ func run() string {
 		HPCScheduler.Refill(-1)
 	}
 
+	for _, job := range deadlineAwareQueue {
+		log.Debugf("Pending Deadline aware job %+v\n", job)
+		jobID, err := HPCScheduler.Punch(int(job.NbCPU), job.Duration_in_seconds)
+		if err != nil {
+			log.Errorf("Unable to allocate resources %s", err)
+		}
+		// FIXME: might return multiple job id...
+		return jobID
+	}
+
 	log.Infof("Queue size found: %d", queueSize)
 	log.Infof("Nb running app found: %d", nbRunningApp)
 	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
@@ -65,8 +75,12 @@ func run() string {
 }
 
 func RunForever(step time.Duration) {
+	punchJobIds := []string{}
 	for {
-		go run()
+		punchJobId := run()
+		if punchJobId != "" {
+			punchJobIds = append(punchJobIds, punchJobId)
+		}
 		time.Sleep(step * time.Second)
 	}
 }

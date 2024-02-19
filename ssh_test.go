@@ -3,11 +3,11 @@ package main
 import (
 	"testing"
 
-	"github.com/RyaxTech/bebida-shaker/connectors"
+	"github.com/RyaxTech/bebida-shaker/connectors/exec"
 )
 
 func TestSSH(t *testing.T) {
-	out, err := connectors.ExecuteCommand("echo toto")
+	out, err := exec.ExecuteCommand("echo toto")
 	if err != nil {
 		t.Error(err)
 	}
