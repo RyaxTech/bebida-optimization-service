@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"regexp"
 
 	"github.com/RyaxTech/bebida-shaker/connectors/exec"
 	"github.com/RyaxTech/bebida-shaker/connectors/utils"
@@ -12,24 +13,30 @@ import (
 
 type OAR struct{}
 
+var ExecuteCommand = exec.ExecuteCommand
+
 func (OAR) Punch(nbCpuPerJob int, jobDurationInSeconds int) (string, error) {
 	// TODO put this in a config file (or env var)
 	randomSuffix := utils.RandomString(8)
-	cmd := fmt.Sprintf("oarsub --name BEBIDA_NOOP_%s -l cores=%d sleep %d | grep OAR_JOB_ID | cut -d'=' -f2", randomSuffix, nbCpuPerJob, jobDurationInSeconds)
-	out, err := exec.ExecuteCommand(cmd)
+	cmd := fmt.Sprintf("oarsub --name BEBIDA_NOOP_%s -l cores=%d sleep %d", randomSuffix, nbCpuPerJob, jobDurationInSeconds)
+	out, err := ExecuteCommand(cmd)
+	log.Infof("Punch command output: %s", string(out))
+
+	// Find the job ID
+	jobReg := regexp.MustCompile("OAR_JOB_ID=([0-9]+)")
+	jobId := jobReg.FindStringSubmatch(out)[1]
 
 	if err != nil {
 		log.Errorf("Unable to submit job: %s", err)
 		return "", err
 	}
 
-	log.Infof("Punch command output: %s", string(out))
-	return out, nil
+	return jobId, nil
 }
 
 func (OAR) QuitPunch(jobID string) error {
 	cmd := fmt.Sprintf("oardel %s", jobID)
-	out, err := exec.ExecuteCommand(cmd)
+	out, err := ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to delete job: %s", err)
 		return err
@@ -42,7 +49,7 @@ func (OAR) QuitPunch(jobID string) error {
 func (oar OAR) QuitAllPunch() error {
 	// get OAR job ID from the name
 	cmd := string("oarstat --json | jq '.[] | select(.name | match(\"BEBIDA_NOOP\")) | .id' -r)")
-	out, err := exec.ExecuteCommand(cmd)
+	out, err := ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to list bebida jobs: %s", err)
 		return err
@@ -64,7 +71,7 @@ func (OAR) Refill(nbResources int) error {
 	if nbResources != -1 {
 		// Apply quota on the server by changing the file content. It's reloaded for every scheduling round.
 		cmd := string("oarstat --json | jq '. | length'")
-		out, err := exec.ExecuteCommand(cmd)
+		out, err := ExecuteCommand(cmd)
 		if err != nil {
 			log.Errorf("Unable to list bebida jobs: %s", err)
 			return err
@@ -83,7 +90,7 @@ func (OAR) Refill(nbResources int) error {
 	// "<Queue>, <project>, <job_type>, <user>": [<Maximum used resources>, <Max running job>, <Max resource per hours>]
 	quota := fmt.Sprintf("{\"quotas\": \"*,*,*,*\": [-1, %d, -1]}", quotaResource)
 	cmd := fmt.Sprintf("echo '%s' > /etc/oar/quotas.json", quota)
-	_, err := exec.ExecuteCommand(cmd)
+	_, err := ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to list bebida jobs: %s", err)
 		return err

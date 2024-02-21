@@ -3,16 +3,24 @@ package events
 import "time"
 
 // events
-type NewPendingPod struct {
-	PodId          string
-	NbCores         int
-	Requested_time time.Duration
-	Deadline       time.Time
-	TimeCritical bool
+type PendingPod struct {
+	PodId         string
+	NbCores       int
+	RequestedTime time.Duration
+	Deadline      time.Time
+	TimeCritical  bool
 }
+
+func NewPendingPod() PendingPod {
+	return PendingPod{
+		NbCores:       1,
+		RequestedTime: 900,
+	}
+}
+
 type PodCompleted struct {
 	PodId           string
 	NbCore          int
-	Completion_time time.Duration
-	TimeCritical bool
+	CompletionTime time.Duration
+	TimeCritical    bool
 }

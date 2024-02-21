@@ -51,22 +51,37 @@ func WatchQueues(channel chan interface{}) {
 		switch event.Type {
 		case watch.Added:
 			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+			pendingPod := events.NewPendingPod()
+			pendingPod.PodId = pod.ObjectMeta.Name
 			nbCpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
+			if nbCpu > 0 {
+				pendingPod.NbCores = int(nbCpu)
+			}
 			deadline, err := time.Parse(pod.Labels["deadline"], time.RFC3339)
 			if err != nil {
 				log.Warnf("Error %s while retrieving CPU request for Pod %v+\n", err, pod)
 			}
+			if deadline.After(time.Now().Add(time.Minute)) {
+				pendingPod.Deadline = deadline
+			}
 			requestedTime, err := time.ParseDuration(pod.Labels["duration"])
-			timeCritical := (pod.Labels["timeCritical"] != "")
-			channel <- events.NewPendingPod{PodId: pod.Name, NbCores: int(nbCpu), Requested_time: requestedTime, Deadline: deadline, TimeCritical: timeCritical}
+			if err != nil {
+				log.Warnf("Error %s while retrieving duration annotation for Pod %v+\n", err, pod)
+			} else if requestedTime > time.Minute {
+				pendingPod.RequestedTime = requestedTime
+			}
+			pendingPod.TimeCritical = (pod.Labels["timeCritical"] != "")
+			channel <- pendingPod
 		case watch.Modified:
 			log.Infof("Pod %s/%s modified", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 		case watch.Deleted:
 			log.Infof("Pod %s/%s deleted", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+			channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
 		}
 	}
 }
 
+// DEPRECATED
 func GetQueueSize() (int, int, []DeadlineAwareJob, error) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 	namespace := k8sConfig.namespace
