@@ -21,13 +21,14 @@ type Parameters struct {
 
 var params Parameters
 var podIdToJobIdMap = make(map[string]string)
+
 func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	switch event.(type) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
 		pod := event.(events.PendingPod)
 		jobId, err := hpcScheduler.Punch(int(pod.NbCores), int(pod.RequestedTime.Seconds()))
-		podIdToJobIdMap[pod.PodId] = jobId	
+		podIdToJobIdMap[pod.PodId] = jobId
 		if err != nil {
 			log.Errorf("Unable to allocate resources %s", err)
 		}

@@ -14,7 +14,7 @@ type PendingPod struct {
 func NewPendingPod() PendingPod {
 	return PendingPod{
 		NbCores:       1,
-		RequestedTime: 900,
+		RequestedTime: 900 * time.Second,
 	}
 }
 
