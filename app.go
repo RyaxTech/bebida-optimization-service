@@ -1,57 +1,98 @@
 package main
 
 import (
-	"time"
+	"os"
+	"strconv"
 
 	connectors "github.com/RyaxTech/bebida-shaker/connectors"
+	"github.com/RyaxTech/bebida-shaker/events"
 	"github.com/apex/log"
 )
 
+type HPCSchedulerType string
+
 type Parameters struct {
-	threshold     int
-	pendingJobs   int
-	maxPendingJob int
+	threshold         int
+	pendingJobs       int
+	maxPendingJob     int
+	stepTimeInSeconds int
+	HPCSchedulerType  string
 }
 
 var params Parameters
+var podIdToJobIdMap = make(map[string]string)
 
-// Simulate a function that takes 1s to complete.
-func run() {
-	log.Info("Check for the Queue state")
-	queueSize, err := connectors.GetQueueSize()
-	if err != nil {
-		log.Errorf("Unable to get size the queue %s", err)
-	}
-	nbRunningApp, err := connectors.GetNbRunningApp()
-	if err != nil {
-		log.Errorf("Unable to get number of running app %s", err)
-	}
-
-	log.Infof("Queue size found: %d", queueSize)
-	log.Infof("Nb running app found: %d", nbRunningApp)
-	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
-		log.Info("Hummmm... a Ti'Punch ^^")
-		params.pendingJobs += 1
-		err := connectors.Punch()
+func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
+	switch event.(type) {
+	case events.PendingPod:
+		log.Infof("Handling new pending pod: %v+\n", event)
+		pod := event.(events.PendingPod)
+		jobId, err := hpcScheduler.Punch(int(pod.NbCores), int(pod.RequestedTime.Seconds()))
+		podIdToJobIdMap[pod.PodId] = jobId
 		if err != nil {
 			log.Errorf("Unable to allocate resources %s", err)
 		}
-		params.pendingJobs -= 1
-	} else if queueSize == 0 && nbRunningApp == 0 {
-		connectors.QuitPunch()
+	case events.PodCompleted:
+		log.Infof("Handling pod completed: %v+\n", event)
+		pod := event.(events.PodCompleted)
+		hpcScheduler.QuitPunch(podIdToJobIdMap[pod.PodId])
+	default:
+		log.Fatalf("Unknown event %v+\n", event)
+		panic(-1)
+	}
+
+}
+
+func run() {
+	event_channel := make(chan interface{})
+
+	var HPCScheduler connectors.HPCConnector
+	switch params.HPCSchedulerType {
+	case "OAR":
+		HPCScheduler = connectors.OAR{}
+	case "SLURM":
+		HPCScheduler = connectors.SLURM{}
+	}
+
+	go connectors.WatchQueues(event_channel)
+	for {
+		event := <-event_channel
+		schedule(event, HPCScheduler)
 	}
 }
 
-func RunForever() {
-	for {
-		go run()
-		time.Sleep(1 * time.Second)
+func getIntEnv(envName string, defaultValue int) int {
+	val, ok := os.LookupEnv(envName)
+	if !ok {
+		return defaultValue
+	} else {
+		intVal, err := strconv.Atoi(val)
+		if err != nil {
+			log.Warnf("Unable to parse '%s' environment variable with value '%s': %s", envName, val, err)
+			return defaultValue
+		}
+		return intVal
+	}
+}
+
+func getStrEnv(envName string, defaultValue string) string {
+	val, ok := os.LookupEnv(envName)
+	if !ok {
+		return defaultValue
+	} else {
+		return val
 	}
 }
 
 func main() {
-	log.Info("Starting Bebida optimizer service")
-	params = Parameters{threshold: 1, pendingJobs: 0, maxPendingJob: 1}
+	log.Info("Starting Bebida Shaker")
+	params = Parameters{
+		threshold:         getIntEnv("BEBIDA_NB_PENDING_JOB_THRESHOLD", 1),
+		pendingJobs:       0,
+		maxPendingJob:     getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 1),
+		HPCSchedulerType:  getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
+		stepTimeInSeconds: getIntEnv("BEBIDA_STEP_IN_SECONDS", 3),
+	}
 	log.Infof("Parameters: %+v\n", params)
-	RunForever()
+	run()
 }

@@ -1,7 +1,6 @@
-package connectors
+package exec
 
 import (
-	"bytes"
 	"encoding/base64"
 	"os"
 
@@ -9,25 +8,32 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func ExecuteCommand(cmd string) (string, error){
-	
-	// From file
-	//key, err := os.ReadFile("pkey.tmp")
-	//if err != nil {
-	//	log.Fatalf("unable to read private key: %v", err)
-	//}
+type SSHConfig struct {
+	user      string
+	hostname  string
+	port      string
+	keyBase64 string
+}
 
+var setup = setupFromEnv
+
+func setupFromEnv() SSHConfig {
 	user := os.Getenv("BEBIDA_SSH_USER")
 	hostname := os.Getenv("BEBIDA_SSH_HOSTNAME")
 	port := os.Getenv("BEBIDA_SSH_PORT")
-	connectionUrl := hostname + ":" + port
 	// from base64 encoded env var
 	keyBase64 := os.Getenv("BEBIDA_SSH_PKEY")
-	key, err := base64.StdEncoding.DecodeString(keyBase64)
+	return SSHConfig{user: user, hostname: hostname, port: port, keyBase64: keyBase64}
+}
+
+func ExecuteCommand(cmd string) (string, error) {
+	sshConfig := setup()
+	connectionUrl := sshConfig.hostname + ":" + sshConfig.port
+
+	key, err := base64.StdEncoding.DecodeString(sshConfig.keyBase64)
 	if err != nil {
 		log.Fatalf("unable to decode private key: %v", err)
 	}
-
 	// Create the Signer for this private key.
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
@@ -35,7 +41,7 @@ func ExecuteCommand(cmd string) (string, error){
 	}
 
 	config := &ssh.ClientConfig{
-		User: user,
+		User: sshConfig.user,
 		Auth: []ssh.AuthMethod{
 			// Use the PublicKeys method for remote authentication.
 			ssh.PublicKeys(signer),
@@ -58,13 +64,12 @@ func ExecuteCommand(cmd string) (string, error){
 
 	// Once a Session is created, you can execute a single command on
 	// the remote side using the Run method.
-	var b bytes.Buffer
-	session.Stdout = &b
-	log.Infof("Running SSH on host %s with command: %s", hostname, cmd)
-	if err := session.Run(cmd); err != nil {
+	log.Infof("Running SSH on host '%s' with command: %s", sshConfig.hostname, cmd)
+	if out, err := session.CombinedOutput(cmd); err != nil {
 		log.Error("Failed to run: " + err.Error())
-		return "", err
+		return string(out), err
+	} else {
+		log.Infof("Completed SSH on host %s with command: %s\nOUTPUTS: %s", sshConfig.hostname, cmd, out)
+		return string(out), nil
 	}
-	log.Infof("Completed SSH on host %s with command: %s\nOUTPUTS: %s", hostname, cmd, b.String())
-	return b.String(), nil
 }

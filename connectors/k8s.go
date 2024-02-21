@@ -3,88 +3,73 @@ package connectors
 import (
 	"context"
 	"os"
+	"time"
 
+	"github.com/RyaxTech/bebida-shaker/events"
 	"github.com/apex/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type K8sConfig struct {
-	namespace string
-	labelSelector string
+	namespace      string
+	labelSelector  string
 	kubeconfigPath string
 }
 
-func GetQueueSize() (int, error) {
+func WatchQueues(channel chan interface{}) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
-	namespace := k8sConfig.namespace
-	selector := k8sConfig.labelSelector
-	
-	ctx := context.Background()
+
 	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
 	if err != nil {
 		log.Errorf("Error while getting Kubernetes configuration %s", err)
-		return -1, err
 	}
-
-	clientSet := kubernetes.NewForConfigOrDie(config)
-
-	items, err := GetPendingPods(clientSet, ctx, namespace, selector)
+	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Errorf("Error while getting pod state %s", err)
-		return -1, err
-	} else {
-		for _, item := range items {
-			log.Debugf("%+v\n", item)
-		}
+		log.Errorf("Error while creating Kubernetes client %s", err)
 	}
-	return len(items), nil
-}
 
-func GetPendingPods(clientSet *kubernetes.Clientset, ctx context.Context, namespace string, selector string) ([]v1.Pod, error) {
-
-	list, err := clientSet.CoreV1().Pods(namespace).
-		List(ctx, metav1.ListOptions{LabelSelector: selector, FieldSelector: "status.phase=Pending"})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
-}
-
-func GetAllPods(clientSet *kubernetes.Clientset, ctx context.Context, namespace string, selector string) ([]v1.Pod, error) {
-
-	list, err := clientSet.CoreV1().Pods(namespace).
-		List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
-}
-
-func GetNbRunningApp() (int, error) {
-	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
-	namespace := k8sConfig.namespace
-	selector := k8sConfig.labelSelector
-	
 	ctx := context.Background()
-	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
+	watcher, err := client.CoreV1().Pods(v1.NamespaceDefault).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
-		log.Errorf("Error while getting Kubernetes configuration %s", err)
-		return -1, err
+		panic(err)
 	}
 
-	clientSet := kubernetes.NewForConfigOrDie(config)
+	for event := range watcher.ResultChan() {
+		pod := event.Object.(*v1.Pod)
 
-	items, err := GetAllPods(clientSet, ctx, namespace, selector)
-	if err != nil {
-		log.Errorf("Error while getting pod state %s", err)
-		return -1, err
-	} else {
-		for _, item := range items {
-			log.Debugf("%+v\n", item)
+		switch event.Type {
+		case watch.Added:
+			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+			pendingPod := events.NewPendingPod()
+			pendingPod.PodId = pod.ObjectMeta.Name
+			nbCpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
+			if nbCpu > 0 {
+				pendingPod.NbCores = int(nbCpu)
+			}
+			deadline, err := time.Parse(pod.Labels["deadline"], time.RFC3339)
+			if err != nil {
+				log.Warnf("Error %s while retrieving CPU request for Pod %v+\n", err, pod)
+			}
+			if deadline.After(time.Now().Add(time.Minute)) {
+				pendingPod.Deadline = deadline
+			}
+			requestedTime, err := time.ParseDuration(pod.Labels["duration"])
+			if err != nil {
+				log.Warnf("Error %s while retrieving duration annotation for Pod %v+\n", err, pod)
+			} else if requestedTime > time.Minute {
+				pendingPod.RequestedTime = requestedTime
+			}
+			pendingPod.TimeCritical = (pod.Labels["timeCritical"] != "")
+			channel <- pendingPod
+		case watch.Modified:
+			log.Infof("Pod %s/%s modified", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+		case watch.Deleted:
+			log.Infof("Pod %s/%s deleted", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+			channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
 		}
 	}
-	return len(items), nil
 }
