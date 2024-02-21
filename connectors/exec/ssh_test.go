@@ -1,13 +1,11 @@
-package main
+package exec
 
 import (
 	"testing"
-
-	"github.com/RyaxTech/bebida-shaker/connectors/exec"
 )
 
 func TestSSH(t *testing.T) {
-	out, err := exec.ExecuteCommand("echo toto")
+	out, err := ExecuteCommand("echo toto")
 	if err != nil {
 		t.Error(err)
 	}

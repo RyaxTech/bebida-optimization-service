@@ -5,9 +5,16 @@ This repository provides the BeBiDa optimizations to improve Big Data jobs turna
 We can use two mechanisms to improve BeBiDa guarantees: 1) deadline-aware and 2) time-critical. These two approaches are complementary will be combined.
 
 ## Deadline-aware
-In this technique we create empty jobs which do not trigger the prolog/epilog to leave room for applications. Hence we prepare holes on the HPC schedule plan to guarantee a fixed pool of resources for the Big Data workload. The main issue is when to trigger these jobs and with how many resources and time.
+
+In this technique we create empty jobs which do not trigger the prolog/epilog to leave room for applications. Hence we prepare holes on the HPC schedule plan to guarantee a fixed pool of resources for the Big Data workload. The main issue is when to trigger these jobs and with how many resources and time. 
+
+### Technical details
+
+We gather information on job duration and resource needs from Kubernetes annotations that are set on the application Pod. See the configuration section below for more details.
+
 
 ## Time-critical
+
 In this technique we will use a dynamic set of resources to serve applications immediately and scale them out and in (grow and shrink) when necessary. Again, the main issue is when to add or remove nodes from the on-demand pool. For this we will make use of advanced reservations.
 
 The following figure sketches the design of executing jobs using the new BeBiDa deadline-aware and time-critical techniques through the usage of RYAX workflow engine.
@@ -22,6 +29,8 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
   <figcaption>High-level view of the deadline-aware and time-critical BeBiDa mechanisms.</figcaption>
 </figure>
 
+
+
 ## Usage
 
 ## Roadmap
@@ -34,6 +43,7 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
 - [X] Handle BDA app early termination (cancel HPC job if not used anymore)
 - [X] Full testing environment with SLURM and OAR [nixos-compose compositions](https://github.com/oar-team/regale-nixos-compose/tree/main/bebida)
 - [X] Support for OAR over SSH (HPC)
+- [ ] Add deadline support using Kubernetes annotations
 - [ ] Implement the TimeCritical app support with dynamic partitioning
   - [ ] OAR Quotas
   - [ ] Slurm partition Limits

@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 	"strconv"
-	"time"
 
 	connectors "github.com/RyaxTech/bebida-shaker/connectors"
+	"github.com/RyaxTech/bebida-shaker/events"
 	"github.com/apex/log"
 )
 
@@ -21,17 +21,27 @@ type Parameters struct {
 
 var params Parameters
 
-// Simulate a function that takes 1s to complete.
-func run() string {
-	log.Info("Check for the Queue state")
-	queueSize, timeCriticalQueueSize, deadlineAwareQueue, err := connectors.GetQueueSize()
-	if err != nil {
-		log.Errorf("Unable to get size the queue %s", err)
+func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
+	switch event.(type) {
+	case events.NewPendingPod:
+		log.Infof("Handling new pending pod: %v+\n", event)
+		pod := event.(events.NewPendingPod)
+		_, err := hpcScheduler.Punch(int(pod.NbCores), int(pod.Requested_time.Seconds()))
+		if err != nil {
+			log.Errorf("Unable to allocate resources %s", err)
+		}
+	case events.PodCompleted:
+		log.Infof("Handling pod completed: %v+\n", event)
+
+	default:
+		log.Fatalf("Unknown event %v+\n", event)
+		panic(-1)
 	}
-	nbRunningApp, err := connectors.GetNbRunningApp()
-	if err != nil {
-		log.Errorf("Unable to get number of running app %s", err)
-	}
+
+}
+
+func run() {
+	event_channel := make(chan interface{})
 
 	var HPCScheduler connectors.HPCConnector
 	switch params.HPCSchedulerType {
@@ -41,47 +51,10 @@ func run() string {
 		HPCScheduler = connectors.SLURM{}
 	}
 
-	if timeCriticalQueueSize > 0 {
-		HPCScheduler.Refill(timeCriticalQueueSize)
-	} else {
-		HPCScheduler.Refill(-1)
-	}
-
-	for _, job := range deadlineAwareQueue {
-		log.Debugf("Pending Deadline aware job %+v\n", job)
-		jobID, err := HPCScheduler.Punch(int(job.NbCPU), job.Duration_in_seconds)
-		if err != nil {
-			log.Errorf("Unable to allocate resources %s", err)
-		}
-		// FIXME: might return multiple job id...
-		return jobID
-	}
-
-	log.Infof("Queue size found: %d", queueSize)
-	log.Infof("Nb running app found: %d", nbRunningApp)
-	if queueSize > params.threshold && params.pendingJobs < params.maxPendingJob {
-		log.Info("Hummmm... a Ti'Punch ^^")
-		params.pendingJobs += 1
-		jobID, err := HPCScheduler.Punch(1, 900)
-		if err != nil {
-			log.Errorf("Unable to allocate resources %s", err)
-		}
-		params.pendingJobs -= 1
-		return jobID
-	} else if queueSize == 0 && nbRunningApp == 0 {
-		HPCScheduler.QuitAllPunch()
-	}
-	return ""
-}
-
-func RunForever(step time.Duration) {
-	punchJobIds := []string{}
+	go connectors.WatchQueues(event_channel)
 	for {
-		punchJobId := run()
-		if punchJobId != "" {
-			punchJobIds = append(punchJobIds, punchJobId)
-		}
-		time.Sleep(step * time.Second)
+		event := <-event_channel
+		schedule(event, HPCScheduler)
 	}
 }
 
@@ -109,7 +82,7 @@ func getStrEnv(envName string, defaultValue string) string {
 }
 
 func main() {
-	log.Info("Starting Bebida Shacker")
+	log.Info("Starting Bebida Shaker")
 	params = Parameters{
 		threshold:         getIntEnv("BEBIDA_NB_PENDING_JOB_THRESHOLD", 1),
 		pendingJobs:       0,
@@ -118,5 +91,5 @@ func main() {
 		stepTimeInSeconds: getIntEnv("BEBIDA_STEP_IN_SECONDS", 3),
 	}
 	log.Infof("Parameters: %+v\n", params)
-	RunForever(time.Duration(params.stepTimeInSeconds))
+	run()
 }
