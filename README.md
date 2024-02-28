@@ -86,6 +86,7 @@ The created environment contains:
 * `server`: a OAR or Slurm master and a K3s master
 * `frontend`: the OAR login node
 * `node*` worker nodes with both OAR (or Slurm) and K3s with Bebida enabled.
+* `safe-node` a Kubernetes only node that is not part or the HPC resources
 
 All nodes contains a `user1` user with a shared NFS home.
 
@@ -120,28 +121,15 @@ srun -N 2 sleep 10
 
 You can see that pods previously on the `node1` and `node2` nodes where removed before the job starts and the nodes were in SchedulingDisabled during the job and then come back to a Ready state.
 
-## Run the Bebida Optimizer DEPRECATED
+## Test the Bebida Optimizer
 
-Before running the optimizer you'll need SSH access to the Slurm frontend. In
-the project root directory run:
+The Bebida optimization process called `bebida-shaker` is available in the test
+environment and runs on the `server` node. You can watch the logs using:
 ```sh
-export BEBIDA_SSH_PKEY=$(docker-compose exec -ti slurmctld cat /root/.ssh/id_rsa | base64)
-export BEBIDA_SSH_USER="root"
-export BEBIDA_SSH_HOSTNAME="127.0.0.1"
-export BEBIDA_SSH_PORT="2222"
+journalctl -u bebida-shaker -f
 ```
 
-Get Kubernetes access from the k3s generated config:
-```sh
-export KUBECONFIG=$PWD/kubeconfig.yaml
-```
-
-Then, run the optimizer:
-```sh
-go run .
-```
-
-Put a job in the queue with:
+To see it in action, create pods with:
 ```sh
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
@@ -170,3 +158,18 @@ spec:
 EOF
 ```
 
+## Full Scenario Demo
+
+In order to demonstrate how the Bebida optimization works, here is a complete scenario that showcase the deadline aware feature of Bebida Shaker.
+
+In the testing environment, we will play the following scenario:
+
+1. The HPC cluster runs some regular HPC jobs and some other are in the queue
+2. A Spark application with a deadline is submitted through Ryax to the Kubernetes cluster, Bebida Shaker creates a Punch job before the deadline using annotations to get resources needs
+3. The application starts with the driver scheduled in the Kubernetes only safe-node and an executor starting on available HPC nodes
+4. An HPC job finishes which leave room for some pending executors starts
+5. An HPC job starts which kills some running executors
+6. The Punch job starts, and is used to deploy pending executors
+7. The Spark application finishes and the results are available in Ryax
+
+TODO: Add a screen capture here!
