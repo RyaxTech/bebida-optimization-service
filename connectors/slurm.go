@@ -3,6 +3,7 @@ package connectors
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/RyaxTech/bebida-shaker/connectors/exec"
 	"github.com/RyaxTech/bebida-shaker/connectors/utils"
@@ -11,9 +12,13 @@ import (
 
 type SLURM struct{}
 
-func (SLURM) Punch(nbCpuPerJob int, jobDurationInSeconds int) (string, error) {
+func (SLURM) Punch(nbCpuPerJob int, jobDuration time.Duration, deadline time.Time) (string, error) {
 	randomSuffix := utils.RandomString(8)
-	cmd := fmt.Sprintf("sbatch --parsable --job-name BEBIDA_NOOP_%s -n %d sleep %d", randomSuffix, nbCpuPerJob, jobDurationInSeconds)
+	deadlineOption := ""
+	if !deadline.IsZero() {
+		deadlineOption = fmt.Sprintf("--begin=%s", deadline.Format(time.RFC3339))
+	}
+	cmd := fmt.Sprintf("sbatch --parsable --job-name BEBIDA_NOOP_%s -n %d --time %d %s sleep %d", randomSuffix, nbCpuPerJob, int(jobDuration.Minutes()), deadlineOption, int(jobDuration.Seconds()))
 	out, err := exec.ExecuteCommand(cmd)
 	if err != nil {
 		log.Errorf("Unable to submit job: %s", err)

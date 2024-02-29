@@ -27,7 +27,7 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
 		pod := event.(events.PendingPod)
-		jobId, err := hpcScheduler.Punch(int(pod.NbCores), int(pod.RequestedTime.Seconds()))
+		jobId, err := hpcScheduler.Punch(int(pod.NbCores), pod.RequestedTime, pod.Deadline)
 		podIdToJobIdMap[pod.PodId] = jobId
 		if err != nil {
 			log.Errorf("Unable to allocate resources %s", err)
