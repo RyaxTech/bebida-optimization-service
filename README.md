@@ -85,6 +85,12 @@ export MEM=2048  # Needed to set the VM memory size
 nxc start
 ```
 
+In order to expose OAR the services your machine run:
+```sh
+ssh -f -N -L 8080:localhost:80 root@localhost -p 22022
+ssh -f -N -L 8081:localhost:80 root@localhost -p 22023
+```
+
 ### On Grid5000
 
 [Grid5000](https://www.grid5000.fr) is research testbed that allows you to simply deploy the testing environment on bare metal servers.
@@ -126,9 +132,17 @@ nxc build -C oar::g5k-nfs-store
 Finally, you can reserve some resources and deploy:
 ```sh
 # Get some resource and capture the Job ID
-export $(oarsub -l clusters=1/nodes=3,walltime=1:0:0 "$(nxc helper g5k_script) 1h" | grep OAR_JOB_ID)
+export $(oarsub -l cluster=1/nodes=4,walltime=1:0:0 "$(nxc helper g5k_script) 1h" | grep OAR_JOB_ID)
+# WAit until the job starts...
 oarstat -j $OAR_JOB_ID -J | jq --raw-output 'to_entries | .[0].value.assigned_network_address | .[]' > machines
 nxc start -C oar::g5k-nfs-store -m machines
+```
+
+In order to expose OAR services and Ryax on your machine, you can create a port
+forward. Run this on your machine but replace the nodes and the site:
+```sh
+ssh -f -N <SITE>.g5k -L 8080:<FRONTEND MACHINE>:80
+ssh -f -N <SITE>.g5k -L 8081:<SERVER MACHINE>:80
 ```
 
 ## Tests
@@ -137,6 +151,11 @@ Run the integrated tests with:
 ```sh
 nxc driver -t
 ```
+
+You can access the OAR API, Drawgantt and Monika interface in your browser with: [http://localhost:8080/drawgantt]()
+
+The Ryax interface is available at: [http://localhost:8081/app]()
+
 
 You can now check that the cluster is running by watching the nodes state with:
 ```sh
