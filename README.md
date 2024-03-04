@@ -69,6 +69,10 @@ BeBiDa uses annotation to gather information about job types and resources requi
 **WARNING**: This environment is for testing only. It is not secure because
 secrets are hard-coded to simplify development.
 
+You can use either VMs for local development (be aware that you will need at least 16GB of memory), or the grid5000 for larger deployment.
+
+### On you local machine with VMs
+
 You can spawn a test cluster for Bebida using nixos-compose. First, you will need to install [Nix](https://github.com/DeterminateSystems/nix-installer) on your machine. Now you can get the nixos-compose and the needed derivation with:
 ```sh
 nix develop "github:oar-team/regale-nixos-compose?dir=bebida#devShell.x86_64-linux"
@@ -81,21 +85,65 @@ export MEM=2048  # Needed to set the VM memory size
 nxc start
 ```
 
-The created environment contains:
+### On Grid5000
 
-* `server`: a OAR or Slurm master and a K3s master
-* `frontend`: the OAR login node
-* `node*` worker nodes with both OAR (or Slurm) and K3s with Bebida enabled.
-* `safe-node` a Kubernetes only node that is not part or the HPC resources
+[Grid5000](https://www.grid5000.fr) is research testbed that allows you to simply deploy the testing environment on bare metal servers.
 
-All nodes contains a `user1` user with a shared NFS home.
+To do so, connect to the frontend of a site and install NixOS-compose (a.k.a `nxc`) to be able to run the composition build:
+```sh
+pip install git+https://github.com/oar-team/nixos-compose.git
 
-You can now test check that the cluster is running by watching the nodes state with:
+# You might want to add this on your .bachrc
+cat >> ~/.bashrc <<EOF
+export PATH=$PATH:$HOME/.local/bin
+EOF
+
+# Make the exeutable available
+source ~/.bashrc
+
+nxc helper install-nix
+
+# Add some nix configuration
+mkdir -p ~/.config/nix
+cat > ~/.config/nix/nix.conf <<EOF
+experimental-features = nix-command flakes
+EOF
+
+nix --version
+```
+
+> NOTE:
+> Because building the environment might use a lot of resources it is advised to run this build inside an interactive job using:
+> `oarsub -I`
+
+Now that you have Nix installed, and the `nxc` available and you can build environment:
+```sh
+git clone https://github.com/oar-team/regale-nixos-compose.git
+cd regale-nixos-compose/bebida/
+nxc build -C oar::g5k-nfs-store
+```
+
+Finally, you can reserve some resources and deploy:
+```sh
+# Get some resource and capture the Job ID
+export $(oarsub -l clusters=1/nodes=3,walltime=1:0:0 "$(nxc helper g5k_script) 1h" | grep OAR_JOB_ID)
+oarstat -j $OAR_JOB_ID -J | jq --raw-output 'to_entries | .[0].value.assigned_network_address | .[]' > machines
+nxc start -C oar::g5k-nfs-store -m machines
+```
+
+## Tests
+
+Run the integrated tests with:
+```sh
+nxc driver -t
+```
+
+You can now check that the cluster is running by watching the nodes state with:
 ```sh
 nxc connect server
 kubectl get nodes
 ```
-You should have 4 nodes in Ready state.
+You should have 3 nodes in Ready state.
 
 In another terminal, check that all Pods are Running and watch them with:
 ```sh
@@ -120,6 +168,7 @@ srun -N 2 sleep 10
 ```
 
 You can see that pods previously on the `node1` and `node2` nodes where removed before the job starts and the nodes were in SchedulingDisabled during the job and then come back to a Ready state.
+
 
 ## Test the Bebida Optimizer
 
