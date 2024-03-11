@@ -2,20 +2,9 @@
 
 This repository provides the BeBiDa optimizations to improve Big Data jobs turnaround time through adapted mechanisms which offer better guarantees. Our goal is to bring more elasticity in HPC platforms, in order to allow Big Data jobs (Spark) to be executed dynamically, but without altering its resource manager’s internal aspects or losing in scheduling efficiency. We are convinced that each scheduling mode (HPC and Big Data) have their own advantages and disadvantages and they fit better to serve the needs of their typical use cases hence we do not want to change internals of any of them. For that, we focus in extending the BeBiDa techniques that enable the HPC and Big Data resource and job management systems to collocate with minimal interference on the HPC side, with **acceptable and high guarantees** for the Big Data jobs executions.
 
-We can use two mechanisms to improve BeBiDa guarantees: 1) deadline-aware and 2) time-critical. These two approaches are complementary will be combined.
+We use two mechanisms to improve BeBiDa guarantees: 1) deadline-aware and 2) time-critical. These two approaches are complementary could be combined.
 
-## Deadline-aware
-
-In this technique we create empty jobs which do not trigger the prolog/epilog to leave room for applications. Hence we prepare holes on the HPC schedule plan to guarantee a fixed pool of resources for the Big Data workload. The main issue is when to trigger these jobs and with how many resources and time. 
-
-### Technical details
-
-We gather information on job duration and resource needs from Kubernetes annotations that are set on the application Pod. See the configuration section below for more details.
-
-
-## Time-critical
-
-In this technique we will use a dynamic set of resources to serve applications immediately and scale them out and in (grow and shrink) when necessary. Again, the main issue is when to add or remove nodes from the on-demand pool. For this we will make use of advanced reservations.
+## Overview 
 
 The following figure sketches the design of executing jobs using the new BeBiDa deadline-aware and time-critical techniques through the usage of RYAX workflow engine.
 
@@ -29,6 +18,24 @@ The following figure sketches the design of executing jobs using the new BeBiDa 
   <figcaption>High-level view of the deadline-aware and time-critical BeBiDa mechanisms.</figcaption>
 </figure>
 
+
+## Deadline-aware (Punch)
+
+In this technique we create empty jobs, called Punch jobs, which do not trigger the prolog/epilog to leave room for applications. Hence we prepare holes on the HPC schedule plan to guarantee a fixed pool of resources for the Big Data workload. The main issue is when to trigger these jobs and with how many resources and time. 
+
+To cope with this problem, user can provide information on job duration and resource needs using Kubernetes annotations on the application Pod. See the configuration section below for more details.
+
+If no deadline is provided the Punch job with be submitted immediately. 
+If no resources hints are provided the default value will be used.
+
+## Time-critical
+
+In this technique we will use a dynamic set of resources to serve applications immediately and scale them out and in (grow and shrink) when necessary. Again, the main issue is when to add or remove nodes from the on-demand pool. For this we will make use of advanced reservations.
+
+## Spark Application use Bebida Operator
+
+A Spark application on Kubernetes is deployed with a Driver that coordinate the application and get resources from Kubernetes by creating pods. So, a Spark application is a set of pods with a static driver and a set of dynamic executors. To properly handle this with Bebida, we introduce the notion of Bebida Operator. the Optimizer get the annotation from the Driver and ignore the executors pod in the optimization.
+The be excluded from the Bebida default Punch mechanism the Spark driver need to have the following annotation: `ryax.tech/bebidaOperator`
 
 
 ## Usage
@@ -60,9 +67,6 @@ BeBiDa uses annotation to gather information about job types and resources requi
 * `ryax.tech/duration`: walltime in seconds​
 * `ryax.tech/resources.cores`: number of cores needed
 * `ryax.tech/resources.memory`​: memory in megabytes
-* `ryax.tech/resources.workers` (optional) ​: number of workers
-* `ryax.tech/resources.workers.cores`  (optional) : number of cores needed per worker. Take precedence over global resource requests
-* `ryax.tech/resources.workers.memory`​ (optional) : memory in megabytes per worker. Take precedence over global resource requests
 
 ## Setup a testing environment
 

@@ -20,6 +20,8 @@ type K8sConfig struct {
 	kubeconfigPath string
 }
 
+var bebida_prefix = "ryax.tech/"
+
 func WatchQueues(channel chan interface{}) {
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 
@@ -44,30 +46,47 @@ func WatchQueues(channel chan interface{}) {
 		switch event.Type {
 		case watch.Added:
 			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
+			// Exclude pod if explicitly requested
+			if pod.Annotations[bebida_prefix + "bebida"] == "exclude" {
+				continue
+			}
+			log.Infof("Pod %s/%s is a Bebida operator!", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			pendingPod := events.NewPendingPod()
 			pendingPod.PodId = pod.ObjectMeta.Name
 			nbCpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
 			if nbCpu > 0 {
 				pendingPod.NbCores = int(nbCpu)
 			}
-			deadline, err := time.Parse(pod.Labels["deadline"], time.RFC3339)
+			deadline, err := time.Parse(pod.Annotations[bebida_prefix + "deadline"], time.RFC3339)
 			if err != nil {
 				log.Warnf("Error %s while retrieving CPU request for Pod %v+\n", err, pod)
 			}
 			if deadline.After(time.Now().Add(time.Minute)) {
 				pendingPod.Deadline = deadline
 			}
-			requestedTime, err := time.ParseDuration(pod.Labels["duration"])
+			requestedTime, err := time.ParseDuration(pod.Annotations[bebida_prefix + "duration"])
 			if err != nil {
 				log.Warnf("Error %s while retrieving duration annotation for Pod %v+\n", err, pod)
 			} else if requestedTime > time.Minute {
 				pendingPod.RequestedTime = requestedTime
 			}
-			pendingPod.TimeCritical = (pod.Labels["timeCritical"] != "")
+			pendingPod.TimeCritical = (pod.Annotations[bebida_prefix + "timeCritical"] != "")
 			channel <- pendingPod
 		case watch.Modified:
-			log.Infof("Pod %s/%s modified", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
-		case watch.Deleted:
+			log.Infof("Pod %s/%s modified with status: %s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, pod.Status)
+			if pod.DeletionTimestamp != nil {
+				continue
+			}
+			switch pod.Status.Phase {
+			// case v1.PodRunning:
+			// 	channel <- events.PodStarted
+			case v1.PodSucceeded:
+				channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
+			case v1.PodFailed:
+				channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
+			}
+
+		case watch.Deleted, watch.Error:
 			log.Infof("Pod %s/%s deleted", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
 		}

@@ -12,30 +12,29 @@ import (
 type HPCSchedulerType string
 
 type Parameters struct {
-	threshold         int
-	pendingJobs       int
-	maxPendingJob     int
-	stepTimeInSeconds int
-	HPCSchedulerType  string
+	maxPendingPunchJob int
+	HPCSchedulerType   string
 }
 
 var params Parameters
 var podIdToJobIdMap = make(map[string]string)
 
 func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
-	switch event.(type) {
+	switch event := event.(type) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
-		pod := event.(events.PendingPod)
-		jobId, err := hpcScheduler.Punch(int(pod.NbCores), pod.RequestedTime, pod.Deadline)
-		podIdToJobIdMap[pod.PodId] = jobId
+		if event.Deadline.IsZero() && params.maxPendingPunchJob >= len(podIdToJobIdMap) {
+			log.Warnf("Do not create Punch job because we reach the max number of punch job on this cluster: %s)", params.maxPendingPunchJob)
+			return
+		}
+		jobId, err := hpcScheduler.Punch(int(event.NbCores), event.RequestedTime, event.Deadline)
+		podIdToJobIdMap[event.PodId] = jobId
 		if err != nil {
 			log.Errorf("Unable to allocate resources %s", err)
 		}
 	case events.PodCompleted:
 		log.Infof("Handling pod completed: %v+\n", event)
-		pod := event.(events.PodCompleted)
-		hpcScheduler.QuitPunch(podIdToJobIdMap[pod.PodId])
+		hpcScheduler.QuitPunch(podIdToJobIdMap[event.PodId])
 	default:
 		log.Fatalf("Unknown event %v+\n", event)
 		panic(-1)
@@ -87,11 +86,8 @@ func getStrEnv(envName string, defaultValue string) string {
 func main() {
 	log.Info("Starting Bebida Shaker")
 	params = Parameters{
-		threshold:         getIntEnv("BEBIDA_NB_PENDING_JOB_THRESHOLD", 1),
-		pendingJobs:       0,
-		maxPendingJob:     getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 1),
-		HPCSchedulerType:  getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
-		stepTimeInSeconds: getIntEnv("BEBIDA_STEP_IN_SECONDS", 3),
+		maxPendingPunchJob: getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 2),
+		HPCSchedulerType:   getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
 	}
 	log.Infof("Parameters: %+v\n", params)
 	run()
