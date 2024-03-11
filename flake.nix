@@ -7,7 +7,7 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      version = "0.0.2";
+      version = "0.0.3";
       systems = [
         "x86_64-linux"
         # "aarch64-linux"
@@ -62,7 +62,7 @@
 
             systemd.services.bebida-shaker = {
               description = "BeBiDa Shaker service";
-              after = [ "firewall.service" "network-online.target" ];
+              after = [ "firewall.service" "network-online.target" "k3s.target" ];
               wants = [ "firewall.service" "network-online.target" ];
               wantedBy = [ "multi-user.target" ];
               serviceConfig = {

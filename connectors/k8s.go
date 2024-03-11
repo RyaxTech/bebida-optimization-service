@@ -48,9 +48,8 @@ func WatchQueues(channel chan interface{}) {
 			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			// Exclude pod if explicitly requested
 			if pod.Annotations[bebida_prefix + "bebida"] == "exclude" {
-				continue
+				return
 			}
-			log.Infof("Pod %s/%s is a Bebida operator!", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			pendingPod := events.NewPendingPod()
 			pendingPod.PodId = pod.ObjectMeta.Name
 			nbCpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
@@ -73,7 +72,7 @@ func WatchQueues(channel chan interface{}) {
 			pendingPod.TimeCritical = (pod.Annotations[bebida_prefix + "timeCritical"] != "")
 			channel <- pendingPod
 		case watch.Modified:
-			log.Infof("Pod %s/%s modified with status: %s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, pod.Status)
+			log.Infof("Pod %s/%s modified with status: %s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, pod.Status.Phase)
 			if pod.DeletionTimestamp != nil {
 				continue
 			}

@@ -23,8 +23,8 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	switch event := event.(type) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
-		if event.Deadline.IsZero() && params.maxPendingPunchJob >= len(podIdToJobIdMap) {
-			log.Warnf("Do not create Punch job because we reach the max number of punch job on this cluster: %s)", params.maxPendingPunchJob)
+		if event.Deadline.IsZero() && len(podIdToJobIdMap) >= params.maxPendingPunchJob {
+			log.Warnf("Do not create Punch job because we reach the max number of punch job on this cluster: %d)", params.maxPendingPunchJob)
 			return
 		}
 		jobId, err := hpcScheduler.Punch(int(event.NbCores), event.RequestedTime, event.Deadline)
