@@ -103,7 +103,7 @@ To do so, connect to the frontend of a site and install NixOS-compose (a.k.a `nx
 ```sh
 pip install git+https://github.com/oar-team/nixos-compose.git
 
-# You might want to add this on your .bachrc
+# You might want to add this on your .bashrc
 cat >> ~/.bashrc <<EOF
 export PATH=$PATH:$HOME/.local/bin
 EOF
@@ -142,8 +142,7 @@ oarstat -j $OAR_JOB_ID -J | jq --raw-output 'to_entries | .[0].value.assigned_ne
 nxc start -C oar::g5k-nfs-store -m machines
 ```
 
-In order to expose OAR services and Ryax on your machine, you can create a port
-forward. Run this on your machine but replace the nodes and the site:
+In order to expose OAR services and Ryax on your machine, you can create a port forward. Run this on your machine but replace the nodes and the site. To the node IP by name, for example for server use `nxc helper ip server`:
 ```sh
 ssh -f -N <SITE>.g5k -L 8080:<FRONTEND MACHINE>:80
 ssh -f -N <SITE>.g5k -L 8081:<SERVER MACHINE>:80
