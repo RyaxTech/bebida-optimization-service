@@ -48,7 +48,7 @@ func WatchQueues(channel chan interface{}) {
 			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			// Exclude pod if explicitly requested
 			if pod.Annotations[bebida_prefix+"bebida"] == "exclude" {
-				log.Infof("Found exclusion annotation %s, do exclude this pod", bebida_prefix+"bebida: \"exclude\"")
+				log.Infof("Found exclusion annotation %s, do exclude this pod", bebida_prefix+"bebida: exclude")
 				return
 			}
 			pendingPod := events.NewPendingPod()
@@ -57,9 +57,9 @@ func WatchQueues(channel chan interface{}) {
 			if nbCpu > 0 {
 				pendingPod.NbCores = int(nbCpu)
 			}
-			deadline, err := time.Parse(pod.Annotations[bebida_prefix+"deadline"], time.RFC3339)
+			deadline, err := time.Parse(time.RFC3339, pod.Annotations[bebida_prefix+"deadline"])
 			if err != nil {
-				log.Warnf("Error %s while retrieving CPU request for Pod %v+\n", err, pod)
+				log.Warnf("Error %s while retrieving deadline for Pod %v+\n", err, pod)
 			}
 			if deadline.After(time.Now().Add(time.Minute)) {
 				pendingPod.Deadline = deadline
