@@ -19,11 +19,13 @@ var ExecuteCommand = exec.ExecuteCommand
 func (OAR) Punch(nbCpuPerJob int, jobDuration time.Duration, deadline time.Time) (string, error) {
 	// TODO put this in a config file (or env var)
 	randomSuffix := utils.RandomString(8)
-	// FIXME: user1 is hardcoded here, maybe we should use the right user for Bebida directly ass SSH level...
-	cmd := fmt.Sprintf("su user1 --command 'oarsub --name BEBIDA_NOOP_%s -l nodes=%d,walltime=00:%d:00 \"sleep %d\"'", randomSuffix, nbCpuPerJob, int(jobDuration.Minutes()), int(jobDuration.Seconds()))
+	oarsubOpts := fmt.Sprintf("--name BEBIDA_NOOP_%s -l nodes=%d,walltime=00:%d:00 \"sleep %d\"", randomSuffix, nbCpuPerJob, int(jobDuration.Minutes()), int(jobDuration.Seconds()))
 	if !deadline.IsZero() {
-		cmd = fmt.Sprintf("%s -r '%s'", cmd, deadline.Add(-jobDuration).Format("2007-10-24 18:00:00"))
+		oarsubOpts = fmt.Sprintf("-r '%s' %s", deadline.Add(-jobDuration).Format("2007-10-24 18:00:00"), oarsubOpts)
 	}
+
+	// FIXME: user1 is hardcoded here, maybe we should use the right user for Bebida directly ass SSH level...
+	cmd := fmt.Sprintf("su user1 --command 'oarsub %s'", oarsubOpts)
 	out, err := ExecuteCommand(cmd)
 	log.Infof("Punch command output: %s", string(out))
 

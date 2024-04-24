@@ -3,6 +3,7 @@ package connectors
 import (
 	"context"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/RyaxTech/bebida-shaker/events"
@@ -53,10 +54,18 @@ func WatchQueues(channel chan interface{}) {
 			}
 			pendingPod := events.NewPendingPod()
 			pendingPod.PodId = pod.ObjectMeta.Name
-			nbCpu, _ := pod.Spec.Containers[0].Resources.Requests.Cpu().AsInt64()
+
+			nbCpu := 0
+			if pod.Annotations[bebida_prefix+"resources.cores"] != "" {
+				nbCpu, err = strconv.Atoi(pod.Annotations[bebida_prefix+"resources.cores"])
+				if err != nil {
+					log.Warnf("Error %s while parsing resources.cores annotation for Pod %v+\n", err, pod)
+				}
+			}
 			if nbCpu > 0 {
 				pendingPod.NbCores = int(nbCpu)
 			}
+
 			deadline, err := time.Parse(time.RFC3339, pod.Annotations[bebida_prefix+"deadline"])
 			if err != nil {
 				log.Warnf("Error %s while retrieving deadline for Pod %v+\n", err, pod)

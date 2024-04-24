@@ -63,10 +63,9 @@ The be excluded from the Bebida default Punch mechanism the Spark executors need
 BeBiDa uses annotation to gather information about job types and resources requirements. Annotations for BeBiDa are:
 
 * `ryax.tech/timeCritical`: set to `true` to prioritize the job as time critical (defaults to: `false`)
-* `ryax.tech/deadline`: date of the deadline in the RFC3339 format, e.g. "2006-01-02T15:04:05Z07:00"
-* `ryax.tech/duration`: walltime in seconds​
-* `ryax.tech/resources.cores`: number of cores needed
-* `ryax.tech/resources.memory`​: memory in megabytes
+* `ryax.tech/deadline`: date of the deadline in the RFC3339 format, e.g. "2006-01-02T15:04:05+07:00"
+* `ryax.tech/duration`: walltime with a unit
+* `ryax.tech/resources.cores`: number of CPU cores needed
 
 ## Setup a testing environment
 

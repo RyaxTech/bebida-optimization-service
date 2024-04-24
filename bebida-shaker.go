@@ -91,7 +91,6 @@ func main() {
 	deadline := annotateCmd.String("deadline", "", "App deadline date")
 	duration := annotateCmd.String("duration", "900s", "App duration in seconds")
 	cores := annotateCmd.Int("cores", 1, "Number of cores reqired")
-	memory := annotateCmd.Int("memory", 1024, "Amount of memory reqired in Bytes")
 
 	flag.Parse()
 	if len(os.Args) < 2 {
@@ -109,7 +108,7 @@ func main() {
 		run()
 	case "annotate":
 		annotateCmd.Parse(os.Args[2:])
-		err := utils.Annotate(annotateCmd.Arg(0), *deadline, *duration, *cores, *memory)
+		err := utils.Annotate(annotateCmd.Arg(0), *deadline, *duration, *cores)
 		if err != nil {
 			panic(err)
 		}
