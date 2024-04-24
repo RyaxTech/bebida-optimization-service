@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"strconv"
 
 	connectors "github.com/RyaxTech/bebida-shaker/connectors"
 	"github.com/RyaxTech/bebida-shaker/events"
+	"github.com/RyaxTech/bebida-shaker/utils"
 	"github.com/apex/log"
 )
 
@@ -84,11 +87,34 @@ func getStrEnv(envName string, defaultValue string) string {
 }
 
 func main() {
-	log.Info("Starting Bebida Shaker")
-	params = Parameters{
-		maxPendingPunchJob: getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 2),
-		HPCSchedulerType:   getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
+	annotateCmd := flag.NewFlagSet("annotate", flag.ExitOnError)
+	deadline := annotateCmd.String("deadline", "", "App deadline date")
+	duration := annotateCmd.Int("duration", 900, "App duration in seconds")
+	cores := annotateCmd.Int("cores", 1, "Number of cores reqired")
+	memory := annotateCmd.Int("memory", 1024, "Amount of memory reqired in Bytes")
+
+	flag.Parse()
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'shaker' or 'annotate' subcommands")
+		os.Exit(1)
 	}
-	log.Infof("Parameters: %+v\n", params)
-	run()
+	switch os.Args[1] {
+	case "run":
+		log.Info("Starting Bebida Shaker")
+		params = Parameters{
+			maxPendingPunchJob: getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 2),
+			HPCSchedulerType:   getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
+		}
+		log.Infof("Parameters: %+v\n", params)
+		run()
+	case "annotate":
+		annotateCmd.Parse(os.Args[2:])
+		err := utils.Annotate(annotateCmd.Arg(0), *deadline, *duration, *cores, *memory)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		fmt.Println("expected 'annotate' or 'run' subcommands")
+		os.Exit(1)
+	}
 }

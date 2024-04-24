@@ -12,7 +12,7 @@
         "x86_64-linux"
         # "aarch64-linux"
       ];
-      inherit (flake-utils.lib) eachSystem filterPackages;
+      inherit (flake-utils.lib) eachSystem;
       bebidaShakerPackage =
         { pkgs }:
         pkgs.buildGoModule {
@@ -27,7 +27,6 @@
           #}
 
           checkPhase = "";
-          # vendorHash = null;
           # vendorHash = pkgs.lib.fakeHash;
           vendorHash = "sha256-n+Pe2nVWlwDLPbzaWTSYtMyYLzMpC1H+oilg7YJhftI=";
         };
@@ -72,7 +71,7 @@
                 Restart = "always";
                 RestartSec = "5s";
                 EnvironmentFile = cfg.environmentFile;
-                ExecStart = "${cfg.package}/bin/bebida-shaker";
+                ExecStart = "${cfg.package}/bin/bebida-shaker run";
               };
             };
           };
