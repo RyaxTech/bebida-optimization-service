@@ -95,7 +95,7 @@ func main() {
 
 	flag.Parse()
 	if len(os.Args) < 2 {
-		fmt.Println("expected 'shaker' or 'annotate' subcommands")
+		fmt.Println("expected 'run' or 'annotate' subcommands")
 		os.Exit(1)
 	}
 	switch os.Args[1] {

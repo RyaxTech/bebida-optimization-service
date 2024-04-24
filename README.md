@@ -34,8 +34,8 @@ In this technique we will use a dynamic set of resources to serve applications i
 
 ## Spark Application use Bebida Operator
 
-A Spark application on Kubernetes is deployed with a Driver that coordinate the application and get resources from Kubernetes by creating pods. So, a Spark application is a set of pods with a static driver and a set of dynamic executors. To properly handle this with Bebida, we introduce the notion of Bebida Operator. the Optimizer get the annotation from the Driver and ignore the executors pod in the optimization.
-The be excluded from the Bebida default Punch mechanism the Spark driver need to have the following annotation: `ryax.tech/bebidaOperator`
+A Spark application on Kubernetes is deployed with a Driver that coordinate the application and get resources from Kubernetes by creating pods. So, a Spark application is a set of pods with a static driver and a set of dynamic executors. To properly handle this with Bebida, we introduce the notion of Bebida Operator. The Optimizer get the annotation from the Driver and ignore the executors pod in the optimization.
+The be excluded from the Bebida default Punch mechanism the Spark executors need to have the following annotation: `ryax.tech/bebida: "exclude"`
 
 
 ## Usage

@@ -47,7 +47,8 @@ func WatchQueues(channel chan interface{}) {
 		case watch.Added:
 			log.Infof("Pod %s/%s added", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name)
 			// Exclude pod if explicitly requested
-			if pod.Annotations[bebida_prefix + "bebida"] == "exclude" {
+			if pod.Annotations[bebida_prefix+"bebida"] == "exclude" {
+				log.Infof("Found exclusion annotation %s, do exclude this pod", bebida_prefix+"bebida: \"exclude\"")
 				return
 			}
 			pendingPod := events.NewPendingPod()
@@ -56,20 +57,20 @@ func WatchQueues(channel chan interface{}) {
 			if nbCpu > 0 {
 				pendingPod.NbCores = int(nbCpu)
 			}
-			deadline, err := time.Parse(pod.Annotations[bebida_prefix + "deadline"], time.RFC3339)
+			deadline, err := time.Parse(pod.Annotations[bebida_prefix+"deadline"], time.RFC3339)
 			if err != nil {
 				log.Warnf("Error %s while retrieving CPU request for Pod %v+\n", err, pod)
 			}
 			if deadline.After(time.Now().Add(time.Minute)) {
 				pendingPod.Deadline = deadline
 			}
-			requestedTime, err := time.ParseDuration(pod.Annotations[bebida_prefix + "duration"])
+			requestedTime, err := time.ParseDuration(pod.Annotations[bebida_prefix+"duration"])
 			if err != nil {
 				log.Warnf("Error %s while retrieving duration annotation for Pod %v+\n", err, pod)
 			} else if requestedTime > time.Minute {
 				pendingPod.RequestedTime = requestedTime
 			}
-			pendingPod.TimeCritical = (pod.Annotations[bebida_prefix + "timeCritical"] != "")
+			pendingPod.TimeCritical = (pod.Annotations[bebida_prefix+"timeCritical"] != "")
 			channel <- pendingPod
 		case watch.Modified:
 			log.Infof("Pod %s/%s modified with status: %s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, pod.Status.Phase)
