@@ -89,7 +89,7 @@ func getStrEnv(envName string, defaultValue string) string {
 func main() {
 	annotateCmd := flag.NewFlagSet("annotate", flag.ExitOnError)
 	deadline := annotateCmd.String("deadline", "", "App deadline date")
-	duration := annotateCmd.Int("duration", 900, "App duration in seconds")
+	duration := annotateCmd.String("duration", "900s", "App duration in seconds")
 	cores := annotateCmd.Int("cores", 1, "Number of cores reqired")
 	memory := annotateCmd.Int("memory", 1024, "Amount of memory reqired in Bytes")
 
