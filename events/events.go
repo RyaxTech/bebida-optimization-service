@@ -11,10 +11,10 @@ type PendingPod struct {
 	TimeCritical  bool
 }
 
-func NewPendingPod() PendingPod {
+func NewPendingPod(nbCores int, durationInSec int) PendingPod {
 	return PendingPod{
-		NbCores:       1,
-		RequestedTime: 900 * time.Second,
+		NbCores:       nbCores,
+		RequestedTime: time.Duration(durationInSec),
 	}
 }
 

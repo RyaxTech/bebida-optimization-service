@@ -16,6 +16,8 @@ type HPCSchedulerType string
 
 type Parameters struct {
 	maxPendingPunchJob int
+	coresPerNode       int
+	defaultPunchTime   int
 	HPCSchedulerType   string
 }
 
@@ -28,7 +30,7 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
 		if event.TimeCritical {
-			reservedNodeForRefill += int(event.NbCores)
+			reservedNodeForRefill += int(event.NbCores) / params.coresPerNode
 			err := hpcScheduler.Refill(reservedNodeForRefill)
 			if err != nil {
 				log.Errorf("Unable to run Refill: %s", err)
@@ -40,7 +42,7 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 			log.Warnf("Do not create Punch job because we reach the max number of punch job on this cluster: %d)", params.maxPendingPunchJob)
 			return
 		}
-		jobId, err := hpcScheduler.Punch(int(event.NbCores), event.RequestedTime, event.Deadline)
+		jobId, err := hpcScheduler.Punch(int(event.NbCores)/params.coresPerNode, event.RequestedTime, event.Deadline)
 		podIdToJobIdMap[event.PodId] = jobId
 		if err != nil {
 			log.Errorf("Unable to allocate resources %s", err)
@@ -48,7 +50,7 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	case events.PodCompleted:
 		log.Infof("Handling pod completed: %v+\n", event)
 		if event.TimeCritical {
-			reservedNodeForRefill -= int(event.NbCores)
+			reservedNodeForRefill -= int(event.NbCores) / params.coresPerNode
 			err := hpcScheduler.Refill(reservedNodeForRefill)
 			if err != nil {
 				log.Errorf("Unable to run Refill: %s", err)
@@ -76,7 +78,7 @@ func run() {
 	// Reset refill on init
 	HPCScheduler.Refill(-1)
 
-	go connectors.WatchQueues(event_channel)
+	go connectors.WatchQueues(event_channel, params.coresPerNode, params.defaultPunchTime)
 	for {
 		event := <-event_channel
 		schedule(event, HPCScheduler)
@@ -127,7 +129,9 @@ func main() {
 		log.Info("Starting Bebida Shaker")
 		params = Parameters{
 			maxPendingPunchJob: getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 2),
-			HPCSchedulerType:   getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
+			// FIXME: Only works on homogeneous cluster! Should be asked to the HPC scheduler
+			coresPerNode:     getIntEnv("BEBIDA_CORE_PER_NODES", 16),
+			HPCSchedulerType: getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
 		}
 		log.Infof("Parameters: %+v\n", params)
 		run()
