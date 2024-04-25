@@ -89,10 +89,16 @@ func WatchQueues(channel chan interface{}) {
 			switch pod.Status.Phase {
 			// case v1.PodRunning:
 			// 	channel <- events.PodStarted
-			case v1.PodSucceeded:
-				channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
-			case v1.PodFailed:
-				channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
+			case v1.PodSucceeded, v1.PodFailed:
+				nbCores, err := strconv.Atoi(pod.Annotations[bebida_prefix+"resources.cores"])
+				if err != nil {
+					log.Warnf("Error %s while parsing resources.cores annotation for Pod %v+\n", err, pod)
+					channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name}
+				} else {
+					// Only set time critical if the number of cores is set	
+					timeCritical := (pod.Annotations[bebida_prefix+"timeCritical"] != "")
+					channel <- events.PodCompleted{PodId: pod.ObjectMeta.Name, TimeCritical: timeCritical, NbCores: nbCores}
+				}
 			}
 
 		case watch.Deleted, watch.Error:

@@ -19,8 +19,7 @@ func NewPendingPod() PendingPod {
 }
 
 type PodCompleted struct {
-	PodId          string
-	NbCore         int
-	CompletionTime time.Duration
-	TimeCritical   bool
+	PodId        string
+	NbCores      int
+	TimeCritical bool
 }

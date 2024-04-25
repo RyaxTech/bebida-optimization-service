@@ -21,11 +21,21 @@ type Parameters struct {
 
 var params Parameters
 var podIdToJobIdMap = make(map[string]string)
+var reservedNodeForRefill = 0
 
 func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 	switch event := event.(type) {
 	case events.PendingPod:
 		log.Infof("Handling new pending pod: %v+\n", event)
+		if event.TimeCritical {
+			reservedNodeForRefill += int(event.NbCores)
+			err := hpcScheduler.Refill(reservedNodeForRefill)
+			if err != nil {
+				log.Errorf("Unable to run Refill: %s", err)
+			}
+			return
+		}
+
 		if event.Deadline.IsZero() && len(podIdToJobIdMap) >= params.maxPendingPunchJob {
 			log.Warnf("Do not create Punch job because we reach the max number of punch job on this cluster: %d)", params.maxPendingPunchJob)
 			return
@@ -37,6 +47,14 @@ func schedule(event interface{}, hpcScheduler connectors.HPCConnector) {
 		}
 	case events.PodCompleted:
 		log.Infof("Handling pod completed: %v+\n", event)
+		if event.TimeCritical {
+			reservedNodeForRefill -= int(event.NbCores)
+			err := hpcScheduler.Refill(reservedNodeForRefill)
+			if err != nil {
+				log.Errorf("Unable to run Refill: %s", err)
+			}
+			return
+		}
 		hpcScheduler.QuitPunch(podIdToJobIdMap[event.PodId])
 	default:
 		log.Fatalf("Unknown event %v+\n", event)
@@ -55,6 +73,8 @@ func run() {
 	case "SLURM":
 		HPCScheduler = connectors.SLURM{}
 	}
+	// Reset refill on init
+	HPCScheduler.Refill(-1)
 
 	go connectors.WatchQueues(event_channel)
 	for {
@@ -90,11 +110,16 @@ func main() {
 	annotateCmd := flag.NewFlagSet("annotate", flag.ExitOnError)
 	deadline := annotateCmd.String("deadline", "", "App deadline date")
 	duration := annotateCmd.String("duration", "900s", "App duration in seconds")
-	cores := annotateCmd.Int("cores", 1, "Number of cores reqired")
+	cores := annotateCmd.Int("cores", 1, "Number of cores required")
+
+	refillCmd := flag.NewFlagSet("refill", flag.ExitOnError)
+	refillCores := refillCmd.Int("cores", -1, "Number of cores to add to the refill (reset to -1 by default)")
+
+	helpMessage := "expected 'run', 'refill' or 'annotate' subcommands"
 
 	flag.Parse()
 	if len(os.Args) < 2 {
-		fmt.Println("expected 'run' or 'annotate' subcommands")
+		fmt.Println(helpMessage)
 		os.Exit(1)
 	}
 	switch os.Args[1] {
@@ -112,8 +137,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	case "refill":
+		refillCmd.Parse(os.Args[2:])
+		HPCSchedulerType := getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR")
+		var HPCScheduler connectors.HPCConnector
+		switch HPCSchedulerType {
+		case "OAR":
+			HPCScheduler = connectors.OAR{}
+		case "SLURM":
+			HPCScheduler = connectors.SLURM{}
+		}
+		err := HPCScheduler.Refill(*refillCores)
+		if err != nil {
+			panic(err)
+		}
+
 	default:
-		fmt.Println("expected 'annotate' or 'run' subcommands")
+		fmt.Println(helpMessage)
 		os.Exit(1)
 	}
 }
