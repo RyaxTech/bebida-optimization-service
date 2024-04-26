@@ -24,6 +24,8 @@ type K8sConfig struct {
 var bebida_prefix = "ryax.tech/"
 
 func WatchQueues(channel chan interface{}, defaultPunchNbCore int, defaultPunchDuration int) {
+	defer panic("The kubernetes watcher stopped for unknown reason. Quit!")
+
 	k8sConfig := K8sConfig{namespace: "default", labelSelector: "", kubeconfigPath: os.Getenv("KUBECONFIG")}
 
 	config, err := clientcmd.BuildConfigFromFlags("", k8sConfig.kubeconfigPath)
@@ -50,7 +52,7 @@ func WatchQueues(channel chan interface{}, defaultPunchNbCore int, defaultPunchD
 			// Exclude pod if explicitly requested
 			if pod.Annotations[bebida_prefix+"bebida"] == "exclude" {
 				log.Infof("Found exclusion annotation %s, do exclude this pod", bebida_prefix+"bebida: exclude")
-				return
+				continue
 			}
 			pendingPod := events.NewPendingPod(defaultPunchNbCore, defaultPunchDuration)
 			pendingPod.PodId = pod.ObjectMeta.Name
