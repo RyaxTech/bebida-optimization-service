@@ -130,7 +130,8 @@ func main() {
 		params = Parameters{
 			maxPendingPunchJob: getIntEnv("BEBIDA_MAX_PENDING_PUNCH_JOB", 2),
 			// FIXME: Only works on homogeneous cluster! Should be asked to the HPC scheduler
-			coresPerNode:     getIntEnv("BEBIDA_CORE_PER_NODES", 16),
+			coresPerNode:     getIntEnv("BEBIDA_CORES_PER_NODE", 16),
+			defaultPunchTime: getIntEnv("BEBIDA_PUNCH_JOB_DEFAULT_WALLTIME", 600),
 			HPCSchedulerType: getStrEnv("BEBIDA_HPC_SCHEDULER_TYPE", "OAR"),
 		}
 		log.Infof("Parameters: %+v\n", params)
