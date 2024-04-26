@@ -77,7 +77,7 @@ func (OAR) Refill(nbResources int) error {
 	var quotaResource int
 	if nbResources != -1 {
 		// Apply quota on the server by changing the file content. It's reloaded for every scheduling round.
-		cmd := string("oarstat --json | jq '. | length'")
+		cmd := string("oarnodes --json | jq '. | length'")
 		out, err := ExecuteCommand(cmd)
 		if err != nil {
 			log.Errorf("Unable to list bebida jobs: %s", err)
@@ -90,6 +90,10 @@ func (OAR) Refill(nbResources int) error {
 			return err
 		}
 		quotaResource = totalResources - nbResources
+		if quotaResource < 0 {
+			log.Errorf("Error while computing quota. Quota is negative: %d", quotaResource)
+			return nil
+		}
 	} else {
 		quotaResource = -1
 	}

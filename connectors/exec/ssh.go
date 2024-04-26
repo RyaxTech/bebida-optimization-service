@@ -19,8 +19,17 @@ var setup = setupFromEnv
 
 func setupFromEnv() SSHConfig {
 	user := os.Getenv("BEBIDA_SSH_USER")
+	if user == "" {
+		user = os.Getenv("USER")
+	}
 	hostname := os.Getenv("BEBIDA_SSH_HOSTNAME")
+	if hostname == "" {
+		hostname = "localhost"
+	}
 	port := os.Getenv("BEBIDA_SSH_PORT")
+	if port == "" {
+		port = "22"
+	}
 	// from base64 encoded env var
 	keyBase64 := os.Getenv("BEBIDA_SSH_PKEY")
 	return SSHConfig{user: user, hostname: hostname, port: port, keyBase64: keyBase64}
@@ -29,7 +38,6 @@ func setupFromEnv() SSHConfig {
 func ExecuteCommand(cmd string) (string, error) {
 	sshConfig := setup()
 	connectionUrl := sshConfig.hostname + ":" + sshConfig.port
-
 	key, err := base64.StdEncoding.DecodeString(sshConfig.keyBase64)
 	if err != nil {
 		log.Fatalf("unable to decode private key: %v", err)

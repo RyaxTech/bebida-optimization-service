@@ -92,6 +92,11 @@ func WatchQueues(channel chan interface{}, defaultPunchNbCore int, defaultPunchD
 			// case v1.PodRunning:
 			// 	channel <- events.PodStarted
 			case v1.PodSucceeded, v1.PodFailed:
+				// Exclude pod if explicitly requested
+				if pod.Annotations[bebida_prefix+"bebida"] == "exclude" {
+					log.Infof("Found exclusion annotation %s, do exclude this pod", bebida_prefix+"bebida: exclude")
+					continue
+				}
 				nbCores, err := strconv.Atoi(pod.Annotations[bebida_prefix+"resources.cores"])
 				if err != nil {
 					log.Warnf("Error %s while parsing resources.cores annotation for Pod %v+\n", err, pod)
