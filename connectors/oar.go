@@ -99,7 +99,7 @@ func (OAR) Refill(nbResources int) error {
 	}
 	// quotas format. Use * for all in, Use -1 in values for "no limit":
 	// "<Queue>, <project>, <job_type>, <user>": [<Maximum used resources>, <Max running job>, <Max resource per hours>]
-	quota := fmt.Sprintf("{\"quotas\": \"*,*,*,*\": [-1, %d, -1]}", quotaResource)
+	quota := fmt.Sprintf("{\"quotas\": {\"*,*,*,*\": [-1, %d, -1]}}", quotaResource)
 	cmd := fmt.Sprintf("echo '%s' > /etc/oar/quotas.json", quota)
 	_, err := ExecuteCommand(cmd)
 	if err != nil {
